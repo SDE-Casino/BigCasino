@@ -7,3 +7,24 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+  
+  memory_adapter:
+    build:
+      context: ./memory/memory_adapter
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    depends_on:
+      - memory_db
+    environment:
+      - DATABASE_URL=sqlite:///./memory.db
+  
+  memory_db:
+    image: sqlite:latest
+    volumes:
+      - memory_data:/data
+    restart: unless-stopped
+
+volumes:
+  memory_data:
