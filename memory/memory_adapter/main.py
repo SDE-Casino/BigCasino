@@ -37,16 +37,15 @@ class DeckModel(BaseModel):
     cards: List[CardModel]
 
 class PlayerModel(BaseModel):
-    userId: str
-    cards: List[CardModel]
+    cards: List[CardModel]  # Player's collected cards
 
 class GameModel(BaseModel):
-    userId: str
+    userId: str  # The user who created the game
     deckId: str
     size: int
     tableState: List[Dict]  # List of cards with flipped state
-    player1: PlayerModel
-    player2: PlayerModel
+    player1: PlayerModel  # Player 1 is local to the game
+    player2: PlayerModel  # Player 2 is local to the game
     currentTurn: bool  # True for player1, False for player2
 
 class CardCreate(BaseModel):
@@ -59,10 +58,8 @@ class DeckCreate(BaseModel):
     cards: List[CardCreate]
 
 class GameCreate(BaseModel):
-    userId: str
+    userId: str  # The user who created the game
     size: int
-    player1_userId: str
-    player2_userId: str
     cards: List[CardCreate]  # Cards to create for this game's deck
 
 # Response Models
@@ -86,12 +83,12 @@ class DeckResponse(BaseModel):
 
 class GameResponse(BaseModel):
     id: str
-    userId: str
+    userId: str  # The user who created the game
     deckId: str
     size: int
     tableState: str  # JSON string
-    player1: str  # JSON string
-    player2: str  # JSON string
+    player1: str  # JSON string (player data without userId)
+    player2: str  # JSON string (player data without userId)
     currentTurn: bool
     createdAt: datetime
     updatedAt: datetime
@@ -126,12 +123,12 @@ class Game(Base):
     __tablename__ = "games"
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    userId = Column(String, nullable=False)
+    userId = Column(String, nullable=False)  # The user who created the game
     deckId = Column(String, ForeignKey("decks.id"), nullable=False)
     size = Column(Integer, nullable=False)
     tableState = Column(Text, nullable=False)  # JSON string
-    player1 = Column(Text, nullable=False)  # JSON string
-    player2 = Column(Text, nullable=False)  # JSON string
+    player1 = Column(Text, nullable=False)  # JSON string (player data without userId)
+    player2 = Column(Text, nullable=False)  # JSON string (player data without userId)
     currentTurn = Column(Boolean, nullable=False, default=True)
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -219,14 +216,14 @@ def create_game(game: GameCreate, db: Session = Depends(get_db)):
             "isFlipped": False
         })
     
-    # Initialize players with empty cards
+    # Initialize players with empty cards (players are local to the game)
     import json
-    player1_data = json.dumps({"userId": game.player1_userId, "cards": []})
-    player2_data = json.dumps({"userId": game.player2_userId, "cards": []})
+    player1_data = json.dumps({"cards": []})  # Player 1 is local to the game
+    player2_data = json.dumps({"cards": []})  # Player 2 is local to the game
     
     # Create the game
     db_game = Game(
-        userId=game.userId,
+        userId=game.userId,  # The user who created the game
         deckId=db_deck.id,
         size=game.size,
         tableState=json.dumps(table_cards),
