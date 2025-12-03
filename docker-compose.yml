@@ -1,0 +1,9 @@
+
+services:
+  image_adapter:
+    build:
+      context: ./memory/image_adapter
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
