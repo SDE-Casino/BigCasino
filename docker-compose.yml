@@ -18,13 +18,22 @@ services:
     depends_on:
       - memory_db
     environment:
-      - DATABASE_URL=sqlite:///./memory.db
+      - DATABASE_URL=postgresql://postgres:password@memory_db:5432/memory_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=memory_db
   
   memory_db:
-    image: sqlite:latest
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=memory_db
     volumes:
-      - memory_data:/data
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     restart: unless-stopped
 
 volumes:
-  memory_data:
+  postgres_data:
