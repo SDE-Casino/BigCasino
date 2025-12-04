@@ -23,6 +23,20 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=memory_db
   
+  memory_logic:
+    build:
+      context: ./memory/memory_logic
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    depends_on:
+      - memory_adapter
+      - image_adapter
+    environment:
+      - MEMORY_ADAPTER_URL=http://memory_adapter:8001
+      - IMAGE_ADAPTER_URL=http://image_adapter:8000
+  
   memory_db:
     image: postgres:15-alpine
     environment:

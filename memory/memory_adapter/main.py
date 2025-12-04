@@ -274,6 +274,54 @@ def flip_card(game_id: str, card_index: int, db: Session = Depends(get_db)):
     db.refresh(game)
     return game
 
+@app.put("/games/{game_id}/table-state", response_model=GameResponse)
+def update_table_state(game_id: str, table_state: List[Dict], db: Session = Depends(get_db)):
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    import json
+    game.tableState = json.dumps(table_state)
+    game.updatedAt = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(game)
+    return game
+
+@app.put("/games/{game_id}/player/{player_num}", response_model=GameResponse)
+def update_player_data(game_id: str, player_num: int, player_data: Dict, db: Session = Depends(get_db)):
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    if player_num not in [1, 2]:
+        raise HTTPException(status_code=400, detail="Player number must be 1 or 2")
+    
+    import json
+    if player_num == 1:
+        game.player1 = json.dumps(player_data)
+    else:
+        game.player2 = json.dumps(player_data)
+    
+    game.updatedAt = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(game)
+    return game
+
+@app.put("/games/{game_id}/turn", response_model=GameResponse)
+def update_turn(game_id: str, current_turn: bool, db: Session = Depends(get_db)):
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    game.currentTurn = current_turn
+    game.updatedAt = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(game)
+    return game
+
 @app.delete("/games/{game_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_game(game_id: str, db: Session = Depends(get_db)):
     game = db.query(Game).filter(Game.id == game_id).first()
