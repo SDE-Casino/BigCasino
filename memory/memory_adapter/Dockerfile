@@ -8,8 +8,9 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code
+# Copy the application code and cover image
 COPY main.py .
+COPY cover_image.txt .
 
 # Expose the port
 EXPOSE 8000

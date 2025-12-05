@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 import os
 from datetime import datetime
+from pydantic import BaseModel
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/memory_db")
@@ -37,10 +38,29 @@ class Card(Base):
     # Relationship to game
     game = relationship("Game", back_populates="cards")
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="Memory Game Adapter API", version="1.0.0", description="API for managing memory games and cards")
+
+@app.on_event("startup")
+async def startup_event():
+    # Create tables on startup
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Error creating tables: {e}")
+
+# Pydantic models for requests
+class GameCreate(BaseModel):
+    userId: int
+    winner: bool = None
+    currentTurn: bool = True
+
+class CardCreate(BaseModel):
+    localId: int
+    gameId: int
+    flipped: bool
+    ownedBy: bool = None
+    image: str
 
 # Dependency to get DB session
 def get_db():
@@ -87,13 +107,13 @@ def get_game(game_id: int):
         db.close()
 
 @app.post("/games")
-def create_game(userId: int, winner: bool = None, currentTurn: bool = True):
+def create_game(game: GameCreate):
     db = SessionLocal()
     try:
         new_game = Game(
-            userId=userId,
-            winner=winner,
-            currentTurn=currentTurn
+            userId=game.userId,
+            winner=game.winner,
+            currentTurn=game.currentTurn
         )
         db.add(new_game)
         db.commit()
@@ -159,15 +179,15 @@ def get_card(card_id: int):
         db.close()
 
 @app.post("/cards")
-def create_card(localId: int, gameId: int, flipped: bool, ownedBy: bool, image: str):
+def create_card(card: CardCreate):
     db = SessionLocal()
     try:
         new_card = Card(
-            localId=localId,
-            gameId=gameId,
-            flipped=flipped,
-            ownedBy=ownedBy,
-            image=image
+            localId=card.localId,
+            gameId=card.gameId,
+            flipped=card.flipped,
+            ownedBy=card.ownedBy,
+            image=card.image
         )
         db.add(new_card)
         db.commit()
@@ -255,6 +275,7 @@ def get_game_state(game_id: int):
         for card in cards:
             card_data = {
                 "id": card.id,
+                "localId": card.localId,
                 "flipped": card.flipped,
                 "image": card.image
             }

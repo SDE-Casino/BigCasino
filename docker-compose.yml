@@ -46,4 +46,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  memory_db_data_data:
+  memory_db_data:
