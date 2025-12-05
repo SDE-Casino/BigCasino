@@ -1,4 +1,3 @@
-
 services:
   memory_db:
     image: postgres:15
@@ -12,7 +11,7 @@ services:
       - memory_db_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,7 +23,7 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
-  
+
   memory_adapter:
     build:
       context: ./memory/memory_adapter
@@ -37,6 +36,14 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@memory_db:5432/memory_db
+
+  memory_logic:
+    build:
+      context: ./memory/memory_logic
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    restart: unless-stopped
 
 volumes:
   memory_db_data_data:
