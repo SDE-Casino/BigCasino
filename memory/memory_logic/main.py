@@ -23,12 +23,16 @@ class CardResponse(BaseModel):
 class GameResponse(BaseModel):
     id: int
     userId: int
-    winner: Optional[bool]
+    winner: Optional[str]  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: bool
 
 class CreateGameResponse(BaseModel):
     game: GameResponse
     cards: List[CardResponse]
+
+class FlipCardRequest(BaseModel):
+    game_id: int
+    card_id: int
 
 # Service URLs
 MEMORY_ADAPTER_URL = "http://memory_adapter:8000"
@@ -140,6 +144,106 @@ async def create_game(request: CreateGameRequest):
             
             game_state = game_state_response.json()
             return game_state
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with other services: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
+
+@app.post("/flip_card")
+async def flip_card(request: FlipCardRequest):
+    """
+    Flips a card and handles game logic for matching cards, turn changes, and winner determination.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Step 1: Call memory_adapter's flip_card endpoint
+            flip_response = await client.put(
+                f"{MEMORY_ADAPTER_URL}/flip_card/{request.card_id}"
+            )
+            
+            if flip_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to flip card: {flip_response.text}"
+                )
+            
+            # Step 2: Get current game state
+            game_state_response = await client.get(
+                f"{MEMORY_ADAPTER_URL}/game_state/{request.game_id}"
+            )
+            
+            if game_state_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get game state: {game_state_response.text}"
+                )
+            
+            # Step 3: Store this game state (will be returned at the end)
+            stored_game_state = game_state_response.json()
+            
+            # Step 4: Check if there are exactly 2 flipped cards in tableCards
+            table_cards = stored_game_state.get("tableCards", [])
+            flipped_cards = [card for card in table_cards if card.get("flipped", False)]
+            
+            # Step 5: If two flipped cards exist, handle matching logic
+            if len(flipped_cards) == 2:
+                card1 = flipped_cards[0]
+                card2 = flipped_cards[1]
+                
+                if card1["kindId"] != card2["kindId"]:
+                    # Different kindId: flip both cards back and change turn
+                    await client.put(f"{MEMORY_ADAPTER_URL}/flip_card/{card1['id']}")
+                    await client.put(f"{MEMORY_ADAPTER_URL}/flip_card/{card2['id']}")
+                    await client.post(f"{MEMORY_ADAPTER_URL}/change_turn/{request.game_id}")
+                else:
+                    # Same kindId: move cards to player
+                    current_turn = stored_game_state.get("currentTurn", False)
+                    await client.post(
+                        f"{MEMORY_ADAPTER_URL}/move_cards_to_player",
+                        json={
+                            "kindId": card1["kindId"],
+                            "player": current_turn
+                        }
+                    )
+                    
+                    # Get new temporary game state to check if tableCards is empty
+                    new_game_state_response = await client.get(
+                        f"{MEMORY_ADAPTER_URL}/game_state/{request.game_id}"
+                    )
+                    
+                    if new_game_state_response.status_code == 200:
+                        new_game_state = new_game_state_response.json()
+                        new_table_cards = new_game_state.get("tableCards", [])
+                        
+                        # If tableCards is empty, update the winner
+                        if len(new_table_cards) == 0:
+                            player1_count = len(new_game_state.get("player1Cards", []))
+                            player2_count = len(new_game_state.get("player2Cards", []))
+                            
+                            if player1_count > player2_count:
+                                winner = "player1"  # Player 1 wins
+                            elif player2_count > player1_count:
+                                winner = "player2"  # Player 2 wins
+                            else:
+                                winner = "draw"  # Tie
+                            
+                            # Update the game with the winner
+                            await client.put(
+                                f"{MEMORY_ADAPTER_URL}/games/{request.game_id}",
+                                json={"winner": winner}
+                            )
+            
+            # Step 6: Return the stored game state from step 2
+            return stored_game_state
                 
     except httpx.RequestError as e:
         raise HTTPException(

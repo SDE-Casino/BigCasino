@@ -5,6 +5,15 @@ from sqlalchemy.orm import sessionmaker, relationship
 import os
 from datetime import datetime
 from pydantic import BaseModel
+from typing import Optional
+from enum import Enum
+
+# Winner enum
+class Winner(str, Enum):
+    NONE = "none"  # Game still in progress
+    DRAW = "draw"  # Game ended in a tie
+    PLAYER1 = "player1"  # Player 1 wins
+    PLAYER2 = "player2"  # Player 2 wins
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/memory_db")
@@ -18,7 +27,7 @@ class Game(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     userId = Column(Integer, nullable=False)
-    winner = Column(Boolean, nullable=True)
+    winner = Column(String, nullable=True)  # Stores enum string values: "none", "draw", "player1", "player2"
     currentTurn = Column(Boolean, nullable=False)
     
     # Relationship to cards
@@ -53,7 +62,7 @@ async def startup_event():
 # Pydantic models for requests
 class GameCreate(BaseModel):
     userId: int
-    winner: bool = None
+    winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: bool = True
 
 class CardCreate(BaseModel):
@@ -63,6 +72,15 @@ class CardCreate(BaseModel):
     ownedBy: bool = None
     image: str
     kindId: int
+
+class MoveCardsRequest(BaseModel):
+    kindId: int
+    player: bool
+
+class GameUpdate(BaseModel):
+    userId: Optional[int] = None
+    winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
+    currentTurn: Optional[bool] = None
 
 # Dependency to get DB session
 def get_db():
@@ -125,19 +143,39 @@ def create_game(game: GameCreate):
         db.close()
 
 @app.put("/games/{game_id}")
-def update_game(game_id: int, userId: int = None, winner: bool = None, currentTurn: bool = None):
+def update_game(game_id: int, game_update: GameUpdate = None, userId: int = None, winner: Optional[str] = None, currentTurn: bool = None):
+    """
+    Update game. Can use either query parameters (for backward compatibility) or request body.
+    Request body takes precedence if provided. Use request body to explicitly set winner to None.
+    Winner can be "none", "draw", "player1", "player2", or None.
+    """
     db = SessionLocal()
     try:
         game = db.query(Game).filter(Game.id == game_id).first()
         if game is None:
             return {"error": "Game not found"}, 404
         
-        if userId is not None:
-            game.userId = userId
-        if winner is not None:
-            game.winner = winner
-        if currentTurn is not None:
-            game.currentTurn = currentTurn
+        # If request body is provided, use it; otherwise use query parameters for backward compatibility
+        if game_update is not None:
+            if game_update.userId is not None:
+                game.userId = game_update.userId
+            # Always update winner if request body is provided (allows setting to None for ties)
+            # We check if winner was in the original request by checking __fields_set__
+            if hasattr(game_update, '__fields_set__') and 'winner' in game_update.__fields_set__:
+                game.winner = game_update.winner
+            elif 'winner' in game_update.dict():
+                # Fallback: if winner is in the dict, update it (handles explicit None)
+                game.winner = game_update.winner
+            if game_update.currentTurn is not None:
+                game.currentTurn = game_update.currentTurn
+        else:
+            # Backward compatibility with query parameters
+            if userId is not None:
+                game.userId = userId
+            if winner is not None:
+                game.winner = winner
+            if currentTurn is not None:
+                game.currentTurn = currentTurn
             
         db.commit()
         db.refresh(game)
@@ -307,7 +345,7 @@ def get_game_state(game_id: int):
         db.close()
 
 # Endpoint to flip a card
-@app.put("/flp_card/{card_id}")
+@app.put("/flip_card/{card_id}")
 def flip_card(card_id: int):
     db = SessionLocal()
     try:
@@ -321,6 +359,52 @@ def flip_card(card_id: int):
         db.commit()
         db.refresh(card)
         return {"card": card}
+    finally:
+        db.close()
+
+# Endpoint to change turn
+@app.post("/change_turn/{game_id}")
+def change_turn(game_id: int):
+    db = SessionLocal()
+    try:
+        game = db.query(Game).filter(Game.id == game_id).first()
+        if game is None:
+            return {"error": "Game not found"}, 404
+        
+        # Toggle the currentTurn
+        game.currentTurn = not game.currentTurn
+        
+        db.commit()
+        db.refresh(game)
+        return {"game": game}
+    finally:
+        db.close()
+
+# Endpoint to move cards to player
+@app.post("/move_cards_to_player")
+def move_cards_to_player(request: MoveCardsRequest):
+    db = SessionLocal()
+    try:
+        # Find all cards with matching kindId that are on the table (ownedBy=None)
+        cards = db.query(Card).filter(
+            Card.kindId == request.kindId,
+            Card.ownedBy == None
+        ).all()
+        
+        if not cards:
+            return {"message": "No cards found with the specified kindId on the table", "cards": []}
+        
+        # Update ownedBy for all matching cards
+        for card in cards:
+            card.ownedBy = request.player
+        
+        db.commit()
+        
+        # Refresh all cards
+        for card in cards:
+            db.refresh(card)
+        
+        return {"message": f"Moved {len(cards)} card(s) to player", "cards": cards}
     finally:
         db.close()
 
