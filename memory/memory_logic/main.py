@@ -18,6 +18,7 @@ class CardResponse(BaseModel):
     flipped: bool
     ownedBy: Optional[bool]
     image: str
+    kindId: int
 
 class GameResponse(BaseModel):
     id: int
@@ -93,7 +94,7 @@ async def create_game(request: CreateGameRequest):
                     # Calculate localId: sequential from 0 to 2*size-1
                     local_id = pair_id * 2 + card_in_pair
                     
-                    print(f"Creating card with localId={local_id}, gameId={game_id}, image={image_data[:50]}...")
+                    print(f"Creating card with localId={local_id}, gameId={game_id}, kindId={pair_id}, image={image_data[:50]}...")
                     card_response = await client.post(
                         f"{MEMORY_ADAPTER_URL}/cards",
                         json={
@@ -101,7 +102,8 @@ async def create_game(request: CreateGameRequest):
                             "gameId": game_id,
                             "flipped": False,
                             "ownedBy": False,  # False means not owned by any player yet
-                            "image": image_data
+                            "image": image_data,
+                            "kindId": pair_id
                         }
                     )
                     

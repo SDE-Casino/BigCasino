@@ -34,6 +34,7 @@ class Card(Base):
     flipped = Column(Boolean, nullable=False)
     ownedBy = Column(Boolean, nullable=True)
     image = Column(Text, nullable=False)
+    kindId = Column(Integer, nullable=False)
     
     # Relationship to game
     game = relationship("Game", back_populates="cards")
@@ -61,6 +62,7 @@ class CardCreate(BaseModel):
     flipped: bool
     ownedBy: bool = None
     image: str
+    kindId: int
 
 # Dependency to get DB session
 def get_db():
@@ -187,7 +189,8 @@ def create_card(card: CardCreate):
             gameId=card.gameId,
             flipped=card.flipped,
             ownedBy=card.ownedBy,
-            image=card.image
+            image=card.image,
+            kindId=card.kindId
         )
         db.add(new_card)
         db.commit()
@@ -197,7 +200,7 @@ def create_card(card: CardCreate):
         db.close()
 
 @app.put("/cards/{card_id}")
-def update_card(card_id: int, localId: int = None, gameId: int = None, flipped: bool = None, ownedBy: bool = None, image: str = None):
+def update_card(card_id: int, localId: int = None, gameId: int = None, flipped: bool = None, ownedBy: bool = None, image: str = None, kindId: int = None):
     db = SessionLocal()
     try:
         card = db.query(Card).filter(Card.id == card_id).first()
@@ -214,6 +217,8 @@ def update_card(card_id: int, localId: int = None, gameId: int = None, flipped: 
             card.ownedBy = ownedBy
         if image is not None:
             card.image = image
+        if kindId is not None:
+            card.kindId = kindId
             
         db.commit()
         db.refresh(card)
@@ -277,7 +282,8 @@ def get_game_state(game_id: int):
                 "id": card.id,
                 "localId": card.localId,
                 "flipped": card.flipped,
-                "image": card.image
+                "image": card.image,
+                "kindId": card.kindId
             }
             
             if card.ownedBy is None:
