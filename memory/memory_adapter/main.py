@@ -69,7 +69,7 @@ class CardCreate(BaseModel):
     localId: int
     gameId: int
     flipped: bool
-    ownedBy: bool = None
+    ownedBy: Optional[bool] = None  # None = on table, False = player 1, True = player 2
     image: str
     kindId: int
 
@@ -81,6 +81,14 @@ class GameUpdate(BaseModel):
     userId: Optional[int] = None
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: Optional[bool] = None
+
+class CardUpdate(BaseModel):
+    localId: Optional[int] = None
+    gameId: Optional[int] = None
+    flipped: Optional[bool] = None
+    ownedBy: Optional[bool] = None
+    image: Optional[str] = None
+    kindId: Optional[int] = None
 
 # Dependency to get DB session
 def get_db():
@@ -143,10 +151,9 @@ def create_game(game: GameCreate):
         db.close()
 
 @app.put("/games/{game_id}")
-def update_game(game_id: int, game_update: GameUpdate = None, userId: int = None, winner: Optional[str] = None, currentTurn: bool = None):
+def update_game(game_id: int, game_update: GameUpdate):
     """
-    Update game. Can use either query parameters (for backward compatibility) or request body.
-    Request body takes precedence if provided. Use request body to explicitly set winner to None.
+    Update game using request body parameters.
     Winner can be "none", "draw", "player1", "player2", or None.
     """
     db = SessionLocal()
@@ -155,27 +162,13 @@ def update_game(game_id: int, game_update: GameUpdate = None, userId: int = None
         if game is None:
             return {"error": "Game not found"}, 404
         
-        # If request body is provided, use it; otherwise use query parameters for backward compatibility
-        if game_update is not None:
-            if game_update.userId is not None:
-                game.userId = game_update.userId
-            # Always update winner if request body is provided (allows setting to None for ties)
-            # We check if winner was in the original request by checking __fields_set__
-            if hasattr(game_update, '__fields_set__') and 'winner' in game_update.__fields_set__:
-                game.winner = game_update.winner
-            elif 'winner' in game_update.dict():
-                # Fallback: if winner is in the dict, update it (handles explicit None)
-                game.winner = game_update.winner
-            if game_update.currentTurn is not None:
-                game.currentTurn = game_update.currentTurn
-        else:
-            # Backward compatibility with query parameters
-            if userId is not None:
-                game.userId = userId
-            if winner is not None:
-                game.winner = winner
-            if currentTurn is not None:
-                game.currentTurn = currentTurn
+        # Update game fields from request body
+        if game_update.userId is not None:
+            game.userId = game_update.userId
+        if game_update.winner is not None:
+            game.winner = game_update.winner
+        if game_update.currentTurn is not None:
+            game.currentTurn = game_update.currentTurn
             
         db.commit()
         db.refresh(game)
@@ -238,25 +231,26 @@ def create_card(card: CardCreate):
         db.close()
 
 @app.put("/cards/{card_id}")
-def update_card(card_id: int, localId: int = None, gameId: int = None, flipped: bool = None, ownedBy: bool = None, image: str = None, kindId: int = None):
+def update_card(card_id: int, card_update: CardUpdate):
     db = SessionLocal()
     try:
         card = db.query(Card).filter(Card.id == card_id).first()
         if card is None:
             return {"error": "Card not found"}, 404
         
-        if localId is not None:
-            card.localId = localId
-        if gameId is not None:
-            card.gameId = gameId
-        if flipped is not None:
-            card.flipped = flipped
-        if ownedBy is not None:
-            card.ownedBy = ownedBy
-        if image is not None:
-            card.image = image
-        if kindId is not None:
-            card.kindId = kindId
+        # Update card fields from request body
+        if card_update.localId is not None:
+            card.localId = card_update.localId
+        if card_update.gameId is not None:
+            card.gameId = card_update.gameId
+        if card_update.flipped is not None:
+            card.flipped = card_update.flipped
+        if card_update.ownedBy is not None:
+            card.ownedBy = card_update.ownedBy
+        if card_update.image is not None:
+            card.image = card_update.image
+        if card_update.kindId is not None:
+            card.kindId = card_update.kindId
             
         db.commit()
         db.refresh(card)
@@ -309,7 +303,7 @@ def get_game_state(game_id: int):
         # Read the cover image from cover_image.txt
         try:
             with open('cover_image.txt', 'r') as f:
-                cover_image = f.read().strip()
+                cover_image = "placeholder" #f.read().strip()
         except Exception as e:
             print(f"Error reading cover_image.txt: {e}")
             exit(1)

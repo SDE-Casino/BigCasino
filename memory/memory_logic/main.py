@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import httpx
 import random
+import copy
 from typing import List, Optional
 
 app = FastAPI(title="Memory Logic Service", description="A simple FastAPI service for memory logic operations")
@@ -37,6 +38,24 @@ class FlipCardRequest(BaseModel):
 # Service URLs
 MEMORY_ADAPTER_URL = "http://memory_adapter:8000"
 IMAGE_ADAPTER_URL = "http://image_adapter:8000"
+
+def strip_private_info(game_state: dict) -> dict:
+    """
+    Creates a new dictionary where image and kindId are included only if flipped is true.
+    Only processes cards in tableCards, leaving player1Cards and player2Cards unchanged.
+    """
+    # Create a deep copy of the game state to avoid modifying the original
+    stripped_state = copy.deepcopy(game_state)
+    
+    # Process tableCards to remove private info from unflipped cards
+    table_cards = stripped_state.get("tableCards", [])
+    for card in table_cards:
+        if not card.get("flipped", False):
+            # Remove private info for unflipped cards
+            card.pop("image", None)
+            card.pop("kindId", None)
+    
+    return stripped_state
 
 @app.get("/")
 async def root():
@@ -99,16 +118,19 @@ async def create_game(request: CreateGameRequest):
                     local_id = pair_id * 2 + card_in_pair
                     
                     print(f"Creating card with localId={local_id}, gameId={game_id}, kindId={pair_id}, image={image_data[:50]}...")
+                    # Build card data with explicit None for ownedBy
+                    card_data = {
+                        "localId": local_id,
+                        "gameId": game_id,
+                        "flipped": False,
+                        "image": image_data,
+                        "kindId": pair_id
+                    }
+                    # Explicitly set ownedBy to None (null in JSON)
+                    card_data["ownedBy"] = None
                     card_response = await client.post(
                         f"{MEMORY_ADAPTER_URL}/cards",
-                        json={
-                            "localId": local_id,
-                            "gameId": game_id,
-                            "flipped": False,
-                            "ownedBy": False,  # False means not owned by any player yet
-                            "image": image_data,
-                            "kindId": pair_id
-                        }
+                        json=card_data
                     )
                     
                     print(f"Card response status: {card_response.status_code}")
@@ -143,7 +165,7 @@ async def create_game(request: CreateGameRequest):
                 )
             
             game_state = game_state_response.json()
-            return game_state
+            return strip_private_info(game_state)
                 
     except httpx.RequestError as e:
         raise HTTPException(
@@ -242,13 +264,46 @@ async def flip_card(request: FlipCardRequest):
                                 json={"winner": winner}
                             )
             
-            # Step 6: Return the stored game state from step 2
-            return stored_game_state
+            # Step 6: Return the stored game state from step 2 with private info stripped
+            return strip_private_info(stored_game_state)
                 
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
             detail=f"Error communicating with other services: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
+
+@app.get("/game_status/{game_id}")
+async def get_game_status(game_id: int):
+    """
+    Returns the game state with private information stripped.
+    Image and kindId are only included for flipped cards in tableCards.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get the game state from memory_adapter
+            game_state_response = await client.get(f"{MEMORY_ADAPTER_URL}/game_state/{game_id}")
+            
+            if game_state_response.status_code != 200:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Game not found: {game_state_response.text}"
+                )
+            
+            game_state = game_state_response.json()
+            return strip_private_info(game_state)
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory adapter: {str(e)}"
         )
     except Exception as e:
         import traceback
