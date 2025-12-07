@@ -45,5 +45,15 @@ services:
       - "8002:8000"
     restart: unless-stopped
 
+  memory:
+    build:
+      context: ./memory/memory
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    restart: unless-stopped
+    depends_on:
+      - memory_logic
+
 volumes:
   memory_db_data:
