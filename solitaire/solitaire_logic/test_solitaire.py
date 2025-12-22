@@ -288,7 +288,7 @@ def test_move_first_card_to_foundation_accept():
     ]
     game = SolitaireGame(deck_id="kgw5s4v0d5b5", tableau=tableau, auto_setup=False)
 
-    game.move_card_to_foundation_from_tableau(0)
+    game.move_card_to_foundation_from_tableau(0, 'DIAMONDS')
 
     assert len(game.tableau[0]) == 1
     assert len(game.foundation['DIAMONDS']) == 1
@@ -303,7 +303,7 @@ def test_move_first_card_to_foundation_fail_because_its_not_ace():
     game = SolitaireGame(deck_id="kgw5s4v0d5b5", tableau=tableau, auto_setup=False)
 
     with pytest.raises(Exception, match="Only ACE can be moved to empty foundation") as e:
-        game.move_card_to_foundation_from_tableau(0)
+        game.move_card_to_foundation_from_tableau(0, 'DIAMONDS')
 
 def test_move_first_card_to_foundation_fail_because_empty_column_from():
     tableau = [
@@ -312,7 +312,7 @@ def test_move_first_card_to_foundation_fail_because_empty_column_from():
     game = SolitaireGame(deck_id="kgw5s4v0d5b5", tableau=tableau, auto_setup=False)
 
     with pytest.raises(Exception, match="No cards available in the tableau to be moved into foundation") as e:
-        game.move_card_to_foundation_from_tableau(0)
+        game.move_card_to_foundation_from_tableau(0, 'DIAMONDS')
 
 def test_move_card_to_foundation_accept():
     tableau = [[({'code': '2S', 'value': '2', 'suit': 'SPADES'}, False), ({'code': '4D', 'value': '4', 'suit': 'DIAMONDS'}, True)], [], [], [], [], [], []]
@@ -323,7 +323,7 @@ def test_move_card_to_foundation_accept():
         'SPADES': []
     }
     game = SolitaireGame(deck_id="kgw5s4v0d5b5", tableau=tableau, foundation=foundation, auto_setup=False)
-    game.move_card_to_foundation_from_tableau(0)
+    game.move_card_to_foundation_from_tableau(0, 'DIAMONDS')
 
     assert len(game.tableau[0]) == 1
     assert len(game.foundation['DIAMONDS']) == 4
@@ -336,9 +336,9 @@ def test_move_card_to_foundation_fail_because_wrong_value():
     game = SolitaireGame(deck_id="kgw5s4v0d5b5", tableau=tableau, foundation=foundation, auto_setup=False)
 
     with pytest.raises(Exception, match="Card move not allowed") as e:
-        game.move_card_to_foundation_from_tableau(0)
+        game.move_card_to_foundation_from_tableau(0, 'DIAMONDS')
 
-def test_move_card_to_foundation_from_tablon_accept():
+def test_move_card_to_foundation_from_talon_accept():
     talon = [{'code': '3H', 'value': '3', 'suit': 'HEARTS'}]
     foundation = {
         'HEARTS': [{'code': 'AD', 'value': 'ACE', 'suit': 'HEARTS'}, {'code': '2H', 'value': '2', 'suit': 'HEARTS'}],

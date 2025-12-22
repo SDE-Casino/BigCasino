@@ -2,6 +2,7 @@ import requests
 
 # TODO: error handling for HTTP requests
 
+# URL where to get data from the deck adapter
 URL = "http://localhost:8000"
 
 value_mapping = {
@@ -138,7 +139,7 @@ class SolitaireGame:
             else:
                 raise Exception("Card move not allowed")
 
-    def move_card_to_foundation_from_tableau(self, column_from):
+    def move_card_to_foundation_from_tableau(self, column_from, foundation_suit):
         """
         Move card from tableau to foundation if it is allowed
         """
@@ -147,6 +148,9 @@ class SolitaireGame:
 
         card = self.tableau[column_from][-1][0]
         suit = card['suit']
+
+        if suit != foundation_suit:
+            raise Exception("The card suit does not match the foundation suit")
 
         if len(self.foundation[suit]) == 0:
             if card['value'] != 'ACE':
@@ -288,3 +292,11 @@ class SolitaireGame:
                 raise Exception("Unexpected error in foundation length")
 
         return True
+
+    def get_game_state(self):
+        return {
+            "tableau": self.tableau,
+            "foundation": self.foundation,
+            "stock": self.stock,
+            "talon": self.talon
+        }
