@@ -4,7 +4,7 @@ import requests
 app = FastAPI()
 api_url = "https://deckofcardsapi.com/api/deck"
 
-DEBUG_DECK = "h6vgbxtu7jhc"
+DEBUG_DECK = "j3377oca0u0b"
 
 decks = []
 
@@ -25,7 +25,6 @@ def draw_cards(deck_id: str, count: int):
     """
     Draw a specified number of cards from a given deck
     """
-    print(decks)
     if deck_id not in decks and deck_id != DEBUG_DECK:
         raise HTTPException(status_code=404, detail="Item not found")
 
