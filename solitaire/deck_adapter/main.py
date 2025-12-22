@@ -13,9 +13,18 @@ def get_new_deck():
     """
     Retrive a new shuffled deck of cards from the Deck of Cards API
     """
-    response = requests.get(f"{api_url}/new/shuffle/?deck_count=1")
+    print("Getting new deck")
+    # response = requests.get(f"{api_url}/new/shuffle/?deck_count=1")
+    # deck = response.json()
 
-    deck = response.json()
+    deck = {
+        "success":True,
+        "deck_id":"v9co4nofwwsv",
+        "remaining":52,
+        "shuffled":True
+    }
+
+    print(f"Deck received: {deck}")
 
     decks.append(deck['deck_id'])
     return deck

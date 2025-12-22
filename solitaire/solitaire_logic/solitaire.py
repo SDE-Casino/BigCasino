@@ -3,7 +3,7 @@ import requests
 # TODO: error handling for HTTP requests
 
 # URL where to get data from the deck adapter
-URL = "http://localhost:8000"
+URL = "http://localhost:8002"
 
 value_mapping = {
     'ACE':      1,
@@ -63,7 +63,7 @@ class SolitaireGame:
         """
         Retrieve a new deck for the game
         """
-        response = self._get(f"{URL}/new-deck")
+        response = self._get(f"{URL}/new_deck")
 
         if response.status_code != 200:
             raise Exception("Failed to retrieve new deck")
