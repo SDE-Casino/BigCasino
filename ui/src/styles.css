@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/* Memory game card gradient animation */
+@property --card-color-1 {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #3b82f6;
+}
+
+@property --card-color-2 {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #2563eb;
+}
+
+@property --card-hover-color-1 {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #2563eb;
+}
+
+@property --card-hover-color-2 {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #1d4ed8;
+}
+
 body {
   @apply m-0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",

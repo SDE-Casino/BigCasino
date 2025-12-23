@@ -318,8 +318,26 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                                             disabled={card.flipped || isWaiting}
                                             className={`relative w-full h-full rounded-xl shadow-sm border-2 overflow-hidden transition-transform duration-200 ${card.flipped
                                                 ? 'bg-white border-slate-200'
-                                                : 'bg-gradient-to-br from-blue-500 to-blue-600 border-transparent hover:from-blue-600 hover:to-blue-700 cursor-pointer hover:scale-105'
+                                                : 'border-transparent cursor-pointer hover:scale-105'
                                                 } ${isWaiting ? 'cursor-not-allowed' : ''}`}
+                                            style={{
+                                                '--card-color-1': game.currentTurn ? '#a855f7' : '#3b82f6',
+                                                '--card-color-2': game.currentTurn ? '#9333ea' : '#2563eb',
+                                                '--card-hover-color-1': game.currentTurn ? '#9333ea' : '#2563eb',
+                                                '--card-hover-color-2': game.currentTurn ? '#7e22ce' : '#1d4ed8',
+                                                background: card.flipped ? 'white' : 'linear-gradient(135deg, var(--card-color-1), var(--card-color-2))',
+                                                transition: card.flipped ? 'none' : 'transform 0.2s, --card-color-1 0.5s ease, --card-color-2 0.5s ease, --card-hover-color-1 0.5s ease, --card-hover-color-2 0.5s ease'
+                                            } as React.CSSProperties}
+                                            onMouseEnter={(e) => {
+                                                if (!card.flipped) {
+                                                    e.currentTarget.style.background = 'linear-gradient(135deg, var(--card-hover-color-1), var(--card-hover-color-2))'
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!card.flipped) {
+                                                    e.currentTarget.style.background = 'linear-gradient(135deg, var(--card-color-1), var(--card-color-2))'
+                                                }
+                                            }}
                                         >
                                             <div className={`absolute inset-0 flex items-center justify-center ${card.flipped && card.image ? 'opacity-0' : 'opacity-100'}`}>
                                                 <span className="text-white text-3xl font-medium pointer-events-none">?</span>
