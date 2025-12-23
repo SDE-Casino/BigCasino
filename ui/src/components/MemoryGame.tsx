@@ -1,7 +1,43 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from '@tanstack/react-router'
-import { Trophy, RotateCcw, Clock, User, ArrowLeft } from 'lucide-react'
+import { Trophy, RotateCcw, Clock, User, ArrowLeft, Sparkles } from 'lucide-react'
+
+// Confetti component
+function Confetti({ active }: { active: boolean }) {
+    if (!active) return null
+
+    const colors = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#ec4899']
+    const particles = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 3,
+        duration: 2 + Math.random() * 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 5 + Math.random() * 10,
+    }))
+
+    return (
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+            {particles.map((p) => (
+                <div
+                    key={p.id}
+                    className="absolute animate-confetti"
+                    style={{
+                        left: `${p.left}%`,
+                        top: '-20px',
+                        width: `${p.size}px`,
+                        height: `${p.size}px`,
+                        backgroundColor: p.color,
+                        animationDelay: `${p.delay}s`,
+                        animationDuration: `${p.duration}s`,
+                        borderRadius: Math.random() > 0.5 ? '50%' : '0',
+                    }}
+                />
+            ))}
+        </div>
+    )
+}
 
 interface Card {
     id: number
@@ -160,10 +196,15 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4 animate-in fade-in duration-500">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-slate-600">Loading game...</p>
+                    <p className="text-slate-600 animate-pulse">Loading game...</p>
+                    <div className="flex justify-center gap-2 mt-4">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
                 </div>
             </div>
         )
@@ -233,27 +274,30 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
 
                 {/* Winner Banner */}
                 {game.winner && (
-                    <div className="mb-8 p-6 bg-amber-50 rounded-2xl border border-amber-200 text-center">
-                        <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                            <Trophy size={24} className="text-amber-600" />
+                    <>
+                        <Confetti active={true} />
+                        <div className="p-6 bg-amber-50 rounded-2xl border border-amber-200 text-center animate-in fade-in zoom-in-95 duration-500">
+                            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-3 animate-bounce">
+                                <Trophy size={24} className="text-amber-600" />
+                            </div>
+                            <h2 className="text-xl font-semibold text-slate-900 mb-1">
+                                {game.winner === 'draw' ? "It's a Draw!" : `${game.winner === 'player1' ? 'Player 1' : 'Player 2'} Wins!`}
+                            </h2>
+                            <p className="text-slate-500 text-sm">Game completed</p>
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-900 mb-1">
-                            {game.winner === 'draw' ? "It's a Draw!" : `${game.winner === 'player1' ? 'Player 1' : 'Player 2'} Wins!`}
-                        </h2>
-                        <p className="text-slate-500 text-sm">Game completed</p>
-                    </div>
+                    </>
                 )}
 
                 {/* Turn Indicator */}
                 <div className="mb-8 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
                     <div className="flex items-center justify-center gap-4">
-                        <div className={`w-3 h-3 rounded-full ${!game.currentTurn ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${!game.currentTurn ? 'bg-blue-600 animate-pulse' : 'bg-slate-300'}`}></div>
                         <h2 className="text-lg font-medium text-slate-900">
-                            Current Turn: <span className="font-semibold text-blue-600">
+                            Current Turn: <span className={`font-semibold ${game.currentTurn ? 'text-purple-600' : 'text-blue-600'}`}>
                                 {game.currentTurn ? 'Player 2' : 'Player 1'}
                             </span>
                         </h2>
-                        <div className={`w-3 h-3 rounded-full ${game.currentTurn ? 'bg-purple-600' : 'bg-slate-300'}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${game.currentTurn ? 'bg-purple-600 animate-pulse' : 'bg-slate-300'}`}></div>
                     </div>
                 </div>
 
@@ -272,31 +316,28 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                                             type="button"
                                             onClick={() => flipCard(card.localId)}
                                             disabled={card.flipped || isWaiting}
-                                            className={`relative w-full h-full rounded-xl shadow-sm transition-all duration-300 hover:shadow-md ${card.flipped
-                                                ? 'bg-white border-2 border-slate-200'
-                                                : 'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 cursor-pointer'
+                                            className={`relative w-full h-full rounded-xl shadow-sm border-2 overflow-hidden transition-transform duration-200 ${card.flipped
+                                                ? 'bg-white border-slate-200'
+                                                : 'bg-gradient-to-br from-blue-500 to-blue-600 border-transparent hover:from-blue-600 hover:to-blue-700 cursor-pointer hover:scale-105'
                                                 } ${isWaiting ? 'cursor-not-allowed' : ''}`}
                                         >
+                                            <div className={`absolute inset-0 flex items-center justify-center ${card.flipped && card.image ? 'opacity-0' : 'opacity-100'}`}>
+                                                <span className="text-white text-3xl font-medium pointer-events-none">?</span>
+                                            </div>
                                             {card.flipped && card.image ? (
                                                 <>
                                                     <img
                                                         src={`data:image/jpeg;base64,${card.image}`}
                                                         alt="Card"
-                                                        className="w-full h-full object-cover rounded-lg"
+                                                        className="absolute inset-0 w-full h-full object-cover"
                                                     />
-                                                    {matchedPairs.has(card.kindId!) && (
-                                                        <div className="absolute inset-0 bg-green-500/80 rounded-lg flex items-center justify-center">
-                                                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                                                <div className="w-4 h-1 bg-green-500 rounded-full"></div>
-                                                            </div>
+                                                    <div className={`absolute inset-0 bg-green-500/80 flex items-center justify-center transition-opacity duration-200 ${matchedPairs.has(card.kindId!) ? 'opacity-100' : 'opacity-0'}`}>
+                                                        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                                                            <div className="w-4 h-1 bg-green-500 rounded-full"></div>
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </>
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <span className="text-white text-3xl font-medium">?</span>
-                                                </div>
-                                            )}
+                                            ) : null}
                                         </button>
                                     ) : (
                                         <div className="w-full h-full rounded-xl bg-slate-50 border border-dashed border-slate-200 opacity-50"></div>
@@ -309,45 +350,47 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
 
                 {/* Player Scores */}
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className={`p-5 rounded-xl border-2 ${!game.currentTurn ? 'bg-white border-blue-500 shadow-sm' : 'bg-white border-slate-200'}`}>
+                    <div className={`p-5 rounded-xl border-2 transition-all duration-500 ease-in-out ${!game.currentTurn ? 'bg-white border-blue-500 shadow-md shadow-blue-500/20' : 'bg-white border-slate-200'}`}>
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${!game.currentTurn ? 'bg-blue-500' : 'bg-slate-100'}`}>
-                                <User size={20} className={!game.currentTurn ? 'text-white' : 'text-slate-600'} />
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-500 ease-in-out ${!game.currentTurn ? 'bg-blue-500 scale-110' : 'bg-slate-100'}`}>
+                                <User size={20} className={`transition-colors duration-500 ${!game.currentTurn ? 'text-white' : 'text-slate-600'}`} />
                             </div>
                             <div className="flex-1">
                                 <h3 className="font-medium text-slate-900">Player 1</h3>
                                 <p className="text-slate-500 text-sm">Pairs</p>
                             </div>
-                            <div className={`text-3xl font-bold ${!game.currentTurn ? 'text-blue-600' : 'text-slate-400'}`}>
+                            <div className={`text-3xl font-bold transition-colors duration-500 ${!game.currentTurn ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
                                 {player1Cards.length}
                             </div>
                         </div>
                     </div>
-                    <div className={`p-5 rounded-xl border-2 ${game.currentTurn ? 'bg-white border-purple-500 shadow-sm' : 'bg-white border-slate-200'}`}>
+                    <div className={`p-5 rounded-xl border-2 transition-all duration-500 ease-in-out ${game.currentTurn ? 'bg-white border-purple-500 shadow-md shadow-purple-500/20' : 'bg-white border-slate-200'}`}>
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${game.currentTurn ? 'bg-purple-500' : 'bg-slate-100'}`}>
-                                <User size={20} className={game.currentTurn ? 'text-white' : 'text-slate-600'} />
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-500 ease-in-out ${game.currentTurn ? 'bg-purple-500 scale-110' : 'bg-slate-100'}`}>
+                                <User size={20} className={`transition-colors duration-500 ${game.currentTurn ? 'text-white' : 'text-slate-600'}`} />
                             </div>
                             <div className="flex-1">
                                 <h3 className="font-medium text-slate-900">Player 2</h3>
                                 <p className="text-slate-500 text-sm">Pairs</p>
                             </div>
-                            <div className={`text-3xl font-bold ${game.currentTurn ? 'text-purple-600' : 'text-slate-400'}`}>
+                            <div className={`text-3xl font-bold transition-colors duration-500 ${game.currentTurn ? 'text-purple-600 scale-110' : 'text-slate-400'}`}>
                                 {player2Cards.length}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Waiting Indicator */}
-                {isWaiting && (
-                    <div className="mb-8 p-4 bg-blue-50 rounded-xl text-center border border-blue-100">
-                        <div className="flex items-center justify-center gap-3">
-                            <div className="w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
-                            <p className="text-slate-600 text-sm">Waiting for cards to flip back...</p>
+                {/* Waiting Indicator - Fixed height container to prevent layout shift */}
+                <div className="mb-8 min-h-[52px]">
+                    {isWaiting && (
+                        <div className="p-4 bg-blue-50 rounded-xl text-center border border-blue-100">
+                            <div className="flex items-center justify-center gap-3">
+                                <div className="w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                <p className="text-slate-600 text-sm">Waiting for cards to flip back...</p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* Size Selection Popup */}
                 {showSizePopup && (
@@ -361,7 +404,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                                         key={gameSize.label}
                                         type="button"
                                         onClick={() => handleSizeSelect(gameSize.size)}
-                                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
+                                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
                                     >
                                         <div>
                                             <span className="font-semibold text-slate-900 group-hover:text-blue-600">{gameSize.label}</span>

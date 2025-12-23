@@ -157,7 +157,7 @@ function Memory() {
         {!isGameRoute && (
           <>
             {/* Header */}
-            <div className="text-center mb-12">
+            <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
               <h1 className="text-4xl font-bold text-slate-800 mb-3">Memory Game</h1>
               <p className="text-slate-600 max-w-xl mx-auto">
                 Test your memory by matching pairs of cards. Flip two cards at a time and find all matching pairs to win.
@@ -165,7 +165,7 @@ function Memory() {
             </div>
 
             {/* Quick Start */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 hover:shadow-md transition-shadow duration-300">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -187,28 +187,28 @@ function Memory() {
             </div>
 
             {/* How to Play */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 hover:shadow-md transition-shadow duration-300">
               <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                 <Gamepad2 size={20} className="text-blue-500" />
                 How to Play
               </h2>
               <div className="grid md:grid-cols-3 gap-5">
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <div className="text-center group hover:scale-105 transition-transform duration-300">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors duration-300">
                     <span className="text-blue-600 font-semibold">1</span>
                   </div>
                   <h3 className="font-medium text-slate-900 mb-1">Flip Cards</h3>
                   <p className="text-slate-500 text-sm">Click to reveal card images</p>
                 </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <div className="text-center group hover:scale-105 transition-transform duration-300">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors duration-300">
                     <span className="text-blue-600 font-semibold">2</span>
                   </div>
                   <h3 className="font-medium text-slate-900 mb-1">Match Pairs</h3>
                   <p className="text-slate-500 text-sm">Find matching card pairs</p>
                 </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <div className="text-center group hover:scale-105 transition-transform duration-300">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors duration-300">
                     <span className="text-blue-600 font-semibold">3</span>
                   </div>
                   <h3 className="font-medium text-slate-900 mb-1">Collect & Win</h3>
@@ -218,7 +218,7 @@ function Memory() {
             </div>
 
             {/* Previous Games */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 hover:shadow-md transition-shadow duration-300">
               <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                 <Trophy size={20} className="text-amber-500" />
                 Previous Games
@@ -248,11 +248,11 @@ function Memory() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {userGames.map((game) => (
-                    <div key={game.gameId} className="relative group">
+                  {userGames.map((game, index) => (
+                    <div key={game.gameId} className="relative group animate-in fade-in slide-in-from-left-4 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
                       <button
                         onClick={() => navigate({ to: '/memory/game/$id', params: { id: game.gameId.toString() } })}
-                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
+                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02] transition-all duration-300 text-left group"
                       >
                         <div className="flex items-center gap-3">
                           <button
@@ -312,7 +312,7 @@ function Memory() {
         {/* Loading Overlay */}
         {isCreatingGame && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center animate-in zoom-in-95 duration-300">
+            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center animate-in zoom-in-95 duration-300 hover:scale-105 transition-transform duration-300">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6 relative">
                 <div className="absolute inset-0 rounded-full border-4 border-blue-300 border-t-transparent animate-spin"></div>
                 <Play size={36} className="text-blue-600 animate-pulse" />
@@ -330,16 +330,17 @@ function Memory() {
 
         {/* Size Selection Popup */}
         {showSizePopup && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full animate-in slide-in-from-bottom-8 duration-300">
               <h2 className="text-xl font-semibold text-slate-900 mb-2">Select Game Size</h2>
               <p className="text-slate-500 text-sm mb-5">Choose your difficulty level</p>
               <div className="space-y-3 mb-5">
-                {GAME_SIZES.map((gameSize) => (
+                {GAME_SIZES.map((gameSize, index) => (
                   <button
                     key={gameSize.label}
                     onClick={() => handleSizeSelect(gameSize.size)}
-                    className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
+                    className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02] hover:shadow-md transition-all duration-300 text-left group animate-in fade-in slide-in-from-left-4 duration-300"
+                    style={{ animationDelay: `${index * 75}ms` }}
                   >
                     <div>
                       <span className="font-semibold text-slate-900 group-hover:text-blue-600">{gameSize.label}</span>
@@ -363,7 +364,7 @@ function Memory() {
         {/* Delete Confirmation Dialog */}
         {showDeleteDialog && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full animate-in zoom-in-95 duration-300">
+            <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full animate-in zoom-in-95 duration-300 hover:scale-105 transition-transform duration-300">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle size={32} className="text-red-600" />
               </div>
