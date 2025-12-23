@@ -33,7 +33,7 @@ class CreateGameResponse(BaseModel):
 
 class FlipCardRequest(BaseModel):
     game_id: int
-    card_id: int
+    local_id: int
 
 # Service URLs
 MEMORY_ADAPTER_URL = "http://memory_adapter:8000"
@@ -54,6 +54,8 @@ def strip_private_info(game_state: dict) -> dict:
             # Remove private info for unflipped cards
             card.pop("image", None)
             card.pop("kindId", None)
+    
+    print(f"DEBUG strip_private_info: player1Cards count={len(stripped_state.get('player1Cards', []))}, player2Cards count={len(stripped_state.get('player2Cards', []))}")
     
     return stripped_state
 
@@ -152,7 +154,7 @@ async def create_game(request: CreateGameRequest):
             for index, card in enumerate(cards):
                 await client.put(
                     f"{MEMORY_ADAPTER_URL}/cards/{card['id']}",
-                    params={"localId": index}
+                    json={"localId": index}
                 )
             
             # Get the game state from memory_adapter
@@ -187,9 +189,34 @@ async def flip_card(request: FlipCardRequest):
     """
     try:
         async with httpx.AsyncClient() as client:
-            # Step 1: Call memory_adapter's flip_card endpoint
+            # Step 1: Find the card by localId and gameId
+            cards_response = await client.get(
+                f"{MEMORY_ADAPTER_URL}/games/{request.game_id}/cards"
+            )
+            
+            if cards_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get cards: {cards_response.text}"
+                )
+            
+            cards = cards_response.json()["cards"]
+            # Find the card with matching localId
+            card_to_flip = None
+            for card in cards:
+                if card["localId"] == request.local_id:
+                    card_to_flip = card
+                    break
+            
+            if card_to_flip is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Card with localId {request.local_id} not found"
+                )
+            
+            # Step 2: Call memory_adapter's flip_card endpoint with the actual card id
             flip_response = await client.put(
-                f"{MEMORY_ADAPTER_URL}/flip_card/{request.card_id}"
+                f"{MEMORY_ADAPTER_URL}/flip_card/{card_to_flip['id']}"
             )
             
             if flip_response.status_code != 200:
@@ -211,6 +238,7 @@ async def flip_card(request: FlipCardRequest):
             
             # Step 3: Store this game state (will be returned at the end)
             stored_game_state = game_state_response.json()
+            print(f"DEBUG flip_card: Got game state, currentTurn={stored_game_state.get('game', {}).get('currentTurn')}")
             
             # Step 4: Check if there are exactly 2 flipped cards in tableCards
             table_cards = stored_game_state.get("tableCards", [])
@@ -218,6 +246,8 @@ async def flip_card(request: FlipCardRequest):
             
             # Step 5: If two flipped cards exist, handle matching logic
             if len(flipped_cards) == 2:
+                # Sort flipped cards by localId to ensure consistent ordering
+                flipped_cards.sort(key=lambda card: card.get("localId", 0))
                 card1 = flipped_cards[0]
                 card2 = flipped_cards[1]
                 
@@ -228,12 +258,25 @@ async def flip_card(request: FlipCardRequest):
                     await client.post(f"{MEMORY_ADAPTER_URL}/change_turn/{request.game_id}")
                 else:
                     # Same kindId: move cards to player
-                    current_turn = stored_game_state.get("currentTurn", False)
+                    # Get fresh game state to get the current turn
+                    fresh_game_state_response = await client.get(
+                        f"{MEMORY_ADAPTER_URL}/game_state/{request.game_id}"
+                    )
+                    
+                    if fresh_game_state_response.status_code == 200:
+                        fresh_game_state = fresh_game_state_response.json()
+                        current_turn = fresh_game_state.get("game", {}).get("currentTurn", False)
+                    else:
+                        # Fallback to stored state if fresh fetch fails
+                        current_turn = stored_game_state.get("game", {}).get("currentTurn", False)
+                    
+                    print(f"DEBUG: Moving cards to player. currentTurn={current_turn}, kindId={card1['kindId']}, gameId={request.game_id}")
                     await client.post(
                         f"{MEMORY_ADAPTER_URL}/move_cards_to_player",
                         json={
                             "kindId": card1["kindId"],
-                            "player": current_turn
+                            "player": current_turn,
+                            "gameId": request.game_id
                         }
                     )
                     

@@ -76,6 +76,7 @@ class CardCreate(BaseModel):
 class MoveCardsRequest(BaseModel):
     kindId: int
     player: bool
+    gameId: int
 
 class GameUpdate(BaseModel):
     userId: Optional[int] = None
@@ -292,21 +293,15 @@ def get_game_state(game_id: int):
         if game is None:
             return {"error": "Game not found"}, 404
         
-        # Get all cards for this game
-        cards = db.query(Card).filter(Card.gameId == game_id).all()
+        print(f"DEBUG get_game_state: gameId={game_id}, currentTurn={game.currentTurn}")
+        
+        # Get all cards for this game, sorted by localId for consistent ordering
+        cards = db.query(Card).filter(Card.gameId == game_id).order_by(Card.localId).all()
         
         # Initialize card lists
         table_cards = []
         player1_cards = []
         player2_cards = []
-        
-        # Read the cover image from cover_image.txt
-        try:
-            with open('cover_image.txt', 'r') as f:
-                cover_image = "placeholder" #f.read().strip()
-        except Exception as e:
-            print(f"Error reading cover_image.txt: {e}")
-            exit(1)
         
         # Categorize cards based on ownedBy field
         for card in cards:
@@ -315,8 +310,11 @@ def get_game_state(game_id: int):
                 "localId": card.localId,
                 "flipped": card.flipped,
                 "image": card.image,
-                "kindId": card.kindId
+                "kindId": card.kindId,
+                "ownedBy": card.ownedBy
             }
+            
+            print(f"DEBUG get_game_state: Card id={card.id}, ownedBy={card.ownedBy}, kindId={card.kindId}")
             
             if card.ownedBy is None:
                 table_cards.append(card_data)
@@ -325,10 +323,14 @@ def get_game_state(game_id: int):
             else:  # card.ownedBy is True
                 player2_cards.append(card_data)
         
-        # Construct the response
+        # Construct response with game object
         game_state = {
-            "coverImage": cover_image,
-            "currentTurn": game.currentTurn,
+            "game": {
+                "id": game.id,
+                "userId": game.userId,
+                "winner": game.winner,
+                "currentTurn": game.currentTurn
+            },
             "tableCards": table_cards,
             "player1Cards": player1_cards,
             "player2Cards": player2_cards
@@ -347,8 +349,10 @@ def flip_card(card_id: int):
         if card is None:
             return {"error": "Card not found"}, 404
         
+        print(f"DEBUG flip_card: cardId={card_id}, flipped before={card.flipped}, ownedBy={card.ownedBy}")
         # Flip the card's flipped status
         card.flipped = not card.flipped
+        print(f"DEBUG flip_card: flipped after={card.flipped}")
             
         db.commit()
         db.refresh(card)
@@ -365,8 +369,10 @@ def change_turn(game_id: int):
         if game is None:
             return {"error": "Game not found"}, 404
         
+        print(f"DEBUG change_turn: gameId={game_id}, currentTurn before={game.currentTurn}")
         # Toggle the currentTurn
         game.currentTurn = not game.currentTurn
+        print(f"DEBUG change_turn: currentTurn after={game.currentTurn}")
         
         db.commit()
         db.refresh(game)
@@ -379,17 +385,23 @@ def change_turn(game_id: int):
 def move_cards_to_player(request: MoveCardsRequest):
     db = SessionLocal()
     try:
-        # Find all cards with matching kindId that are on the table (ownedBy=None)
+        print(f"DEBUG move_cards_to_player: kindId={request.kindId}, player={request.player}, gameId={request.gameId}")
+        # Find all cards with matching kindId and gameId that are on the table (ownedBy=None)
         cards = db.query(Card).filter(
             Card.kindId == request.kindId,
+            Card.gameId == request.gameId,
             Card.ownedBy == None
         ).all()
+        print(f"DEBUG: Found {len(cards)} cards to move")
+        for card in cards:
+            print(f"DEBUG: Card id={card.id}, kindId={card.kindId}, gameId={card.gameId}, ownedBy before={card.ownedBy}")
         
         if not cards:
-            return {"message": "No cards found with the specified kindId on the table", "cards": []}
+            return {"message": "No cards found with specified kindId on the table", "cards": []}
         
         # Update ownedBy for all matching cards
         for card in cards:
+            print(f"DEBUG: Setting card id={card.id} ownedBy to {request.player}")
             card.ownedBy = request.player
         
         db.commit()
@@ -397,6 +409,7 @@ def move_cards_to_player(request: MoveCardsRequest):
         # Refresh all cards
         for card in cards:
             db.refresh(card)
+            print(f"DEBUG: After commit, card id={card.id} ownedBy={card.ownedBy}")
         
         return {"message": f"Moved {len(cards)} card(s) to player", "cards": cards}
     finally:
