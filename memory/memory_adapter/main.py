@@ -31,8 +31,8 @@ class Game(Base):
     winner = Column(String, nullable=True)  # Stores enum string values: "none", "draw", "player1", "player2"
     currentTurn = Column(Boolean, nullable=False)
     
-    # Relationship to cards
-    cards = relationship("Card", back_populates="game")
+    # Relationship to cards with cascade delete
+    cards = relationship("Card", back_populates="game", cascade="all, delete-orphan")
 
 # Card model
 class Card(Base):

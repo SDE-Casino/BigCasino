@@ -388,3 +388,41 @@ async def get_user_games(user_id: int):
             status_code=500,
             detail=error_detail
         )
+
+@app.delete("/delete_game/{game_id}")
+async def delete_game(game_id: int):
+    """
+    Deletes a game by forwarding the request to memory_adapter.
+    This will cascade delete all associated cards.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Forward delete request to memory_adapter
+            response = await client.delete(f"{MEMORY_ADAPTER_URL}/games/{game_id}")
+            
+            if response.status_code == 404:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Game not found: {game_id}"
+                )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to delete game: {response.text}"
+                )
+            
+            return response.json()
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory adapter: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )

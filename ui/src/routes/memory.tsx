@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Clock, Gamepad2, Trophy, Play, User, ChevronRight } from 'lucide-react'
+import { Plus, Clock, Gamepad2, Trophy, Play, User, ChevronRight, Trash2, AlertTriangle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 const MEMORY_SERVICE_URL = 'http://localhost:8003'
@@ -63,6 +63,9 @@ function Memory() {
   const [showSizePopup, setShowSizePopup] = useState(false)
   const [userGames, setUserGames] = useState<Game[]>([])
   const [loadingGames, setLoadingGames] = useState(true)
+  const [isCreatingGame, setIsCreatingGame] = useState(false)
+  const [gameToDelete, setGameToDelete] = useState<number | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   if (!isAuthenticated) {
     throw redirect({ to: '/auth' })
@@ -91,12 +94,20 @@ function Memory() {
 
   const isGameRoute = location.pathname.startsWith('/memory/game/')
 
+  // Reset creating game state when navigating to game route
+  useEffect(() => {
+    if (isGameRoute) {
+      setIsCreatingGame(false)
+    }
+  }, [isGameRoute])
+
   const handleNewGame = () => {
     setShowSizePopup(true)
   }
 
   const handleSizeSelect = async (size: number) => {
     setShowSizePopup(false)
+    setIsCreatingGame(true)
     try {
       const response = await fetch(`${MEMORY_SERVICE_URL}/create_game`, {
         method: 'POST',
@@ -108,6 +119,35 @@ function Memory() {
       navigate({ to: '/memory/game/$id', params: { id: data.game.id.toString() } })
     } catch (err) {
       console.error('Failed to create game:', err)
+      setIsCreatingGame(false)
+    }
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, gameId: number) => {
+    e.stopPropagation()
+    setGameToDelete(gameId)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteGame = async () => {
+    if (gameToDelete === null) return
+
+    try {
+      const response = await fetch(`${MEMORY_SERVICE_URL}/delete_game/${gameToDelete}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) throw new Error('Failed to delete game')
+
+      // Refresh the games list
+      const gamesResponse = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`)
+      if (!gamesResponse.ok) throw new Error('Failed to fetch games')
+      const data: UserGamesResponse = await gamesResponse.json()
+      setUserGames(data.games)
+    } catch (err) {
+      console.error('Failed to delete game:', err)
+    } finally {
+      setShowDeleteDialog(false)
+      setGameToDelete(null)
     }
   }
 
@@ -209,47 +249,57 @@ function Memory() {
               ) : (
                 <div className="space-y-3">
                   {userGames.map((game) => (
-                    <button
-                      key={game.gameId}
-                      onClick={() => navigate({ to: '/memory/game/$id', params: { id: game.gameId.toString() } })}
-                      className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-semibold text-slate-900 group-hover:text-blue-600">
-                            Game #{game.gameId}
-                          </span>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                            {getSizeLabel(game.size)}
-                          </span>
-                          <span className="text-slate-300">•</span>
-                          <span className={`text-sm font-medium ${!game.winner || game.winner === 'none'
-                            ? 'text-blue-600'
-                            : game.winner === 'player1'
-                              ? 'text-green-600'
-                              : game.winner === 'player2'
-                                ? 'text-amber-600'
-                                : 'text-slate-500'
-                            }`}>
-                            {!game.winner || game.winner === 'none' ? 'In Progress' :
-                              game.winner === 'player1' ? 'Player 1 Won' :
-                                game.winner === 'player2' ? 'Player 2 Won' : 'Draw'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1.5 text-slate-600">
-                            <User size={14} />
-                            <span>P1: {game.player1Cards.length}</span>
+                    <div key={game.gameId} className="relative group">
+                      <button
+                        onClick={() => navigate({ to: '/memory/game/$id', params: { id: game.gameId.toString() } })}
+                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={(e) => handleDeleteClick(e, game.gameId)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete game"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="font-semibold text-slate-900 group-hover:text-blue-600">
+                                Game #{game.gameId}
+                              </span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-sm text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                {getSizeLabel(game.size)}
+                              </span>
+                              <span className="text-slate-300">•</span>
+                              <span className={`text-sm font-medium ${!game.winner || game.winner === 'none'
+                                ? 'text-blue-600'
+                                : game.winner === 'player1'
+                                  ? 'text-green-600'
+                                  : game.winner === 'player2'
+                                    ? 'text-amber-600'
+                                    : 'text-slate-500'
+                                }`}>
+                                {!game.winner || game.winner === 'none' ? 'In Progress' :
+                                  game.winner === 'player1' ? 'Player 1 Won' :
+                                    game.winner === 'player2' ? 'Player 2 Won' : 'Draw'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <User size={14} />
+                                <span>P1: {game.player1Cards.length}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <User size={14} />
+                                <span>P2: {game.player2Cards.length}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 text-slate-600">
-                            <User size={14} />
-                            <span>P2: {game.player2Cards.length}</span>
-                          </div>
                         </div>
-                      </div>
-                      <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-                    </button>
+                        <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -258,6 +308,25 @@ function Memory() {
         )}
 
         <Outlet />
+
+        {/* Loading Overlay */}
+        {isCreatingGame && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center animate-in zoom-in-95 duration-300">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                <div className="absolute inset-0 rounded-full border-4 border-blue-300 border-t-transparent animate-spin"></div>
+                <Play size={36} className="text-blue-600 animate-pulse" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Creating Game...</h2>
+              <p className="text-slate-500 text-sm mb-4">Setting up your memory game</p>
+              <div className="flex justify-center gap-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Size Selection Popup */}
         {showSizePopup && (
@@ -287,6 +356,38 @@ function Memory() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteDialog && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full animate-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2 text-center">Delete Game?</h2>
+              <p className="text-slate-500 text-sm text-center mb-6">
+                This action cannot be undone. The game and all its data will be permanently deleted.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteDialog(false)
+                    setGameToDelete(null)
+                  }}
+                  className="flex-1 bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteGame}
+                  className="flex-1 bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         )}
