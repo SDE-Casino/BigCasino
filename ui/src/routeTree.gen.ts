@@ -13,7 +13,7 @@ import { Route as SolitaireRouteImport } from './routes/solitaire'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as MemoryGameRouteImport } from './routes/memory/game'
+import { Route as MemoryGameIdRouteImport } from './routes/memory/game/$id'
 
 const SolitaireRoute = SolitaireRouteImport.update({
   id: '/solitaire',
@@ -35,9 +35,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MemoryGameRoute = MemoryGameRouteImport.update({
-  id: '/game',
-  path: '/game',
+const MemoryGameIdRoute = MemoryGameIdRouteImport.update({
+  id: '/game/$id',
+  path: '/game/$id',
   getParentRoute: () => MemoryRoute,
 } as any)
 
@@ -46,14 +46,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/memory': typeof MemoryRouteWithChildren
   '/solitaire': typeof SolitaireRoute
-  '/memory/game': typeof MemoryGameRoute
+  '/memory/game/$id': typeof MemoryGameIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/memory': typeof MemoryRouteWithChildren
   '/solitaire': typeof SolitaireRoute
-  '/memory/game': typeof MemoryGameRoute
+  '/memory/game/$id': typeof MemoryGameIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,14 +61,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/memory': typeof MemoryRouteWithChildren
   '/solitaire': typeof SolitaireRoute
-  '/memory/game': typeof MemoryGameRoute
+  '/memory/game/$id': typeof MemoryGameIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game'
+  fullPaths: '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game'
-  id: '__root__' | '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game'
+  to: '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game/$id'
+  id: '__root__' | '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -108,22 +108,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/memory/game': {
-      id: '/memory/game'
-      path: '/game'
-      fullPath: '/memory/game'
-      preLoaderRoute: typeof MemoryGameRouteImport
+    '/memory/game/$id': {
+      id: '/memory/game/$id'
+      path: '/game/$id'
+      fullPath: '/memory/game/$id'
+      preLoaderRoute: typeof MemoryGameIdRouteImport
       parentRoute: typeof MemoryRoute
     }
   }
 }
 
 interface MemoryRouteChildren {
-  MemoryGameRoute: typeof MemoryGameRoute
+  MemoryGameIdRoute: typeof MemoryGameIdRoute
 }
 
 const MemoryRouteChildren: MemoryRouteChildren = {
-  MemoryGameRoute: MemoryGameRoute,
+  MemoryGameIdRoute: MemoryGameIdRoute,
 }
 
 const MemoryRouteWithChildren =

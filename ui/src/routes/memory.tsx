@@ -1,7 +1,9 @@
-import { createFileRoute, redirect, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Clock } from 'lucide-react'
 import { useState } from 'react'
+
+const MEMORY_SERVICE_URL = 'http://localhost:8003'
 
 interface GameSize {
   label: string
@@ -19,7 +21,7 @@ export const Route = createFileRoute('/memory')({
 })
 
 function Memory() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [showSizePopup, setShowSizePopup] = useState(false)
@@ -28,15 +30,26 @@ function Memory() {
     throw redirect({ to: '/auth' })
   }
 
-  const isGameRoute = location.pathname === '/memory/game'
+  const isGameRoute = location.pathname.startsWith('/memory/game/')
 
   const handleNewGame = () => {
     setShowSizePopup(true)
   }
 
-  const handleSizeSelect = (size: number) => {
+  const handleSizeSelect = async (size: number) => {
     setShowSizePopup(false)
-    navigate({ to: '/memory/game', search: { size } })
+    try {
+      const response = await fetch(`${MEMORY_SERVICE_URL}/create_game`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id || 1, size }),
+      })
+      if (!response.ok) throw new Error('Failed to create game')
+      const data = await response.json()
+      navigate({ to: '/memory/game/$id', params: { id: data.game.id.toString() } })
+    } catch (err) {
+      console.error('Failed to create game:', err)
+    }
   }
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useNavigate } from '@tanstack/react-router'
 
 interface Card {
     id: number
@@ -40,18 +41,39 @@ const GAME_SIZES: GameSize[] = [
 ]
 
 interface MemoryGameProps {
-    initialSize?: number
+    gameId: number
 }
 
-export default function MemoryGame({ initialSize }: MemoryGameProps) {
+export default function MemoryGame({ gameId }: MemoryGameProps) {
     const { user } = useAuth()
+    const navigate = useNavigate()
     const [gameState, setGameState] = useState<GameState | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [isWaiting, setIsWaiting] = useState(false)
     const [showSizePopup, setShowSizePopup] = useState(false)
 
-    const createGame = useCallback(async (size: number = 8) => {
+    const loadGame = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+
+            const response = await fetch(`${MEMORY_SERVICE_URL}/game_status/${gameId}`)
+            if (!response.ok) throw new Error('Failed to load game')
+            const data = await response.json()
+            setGameState(data)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load game')
+        } finally {
+            setLoading(false)
+        }
+    }, [gameId])
+
+    const handleNewGame = () => {
+        setShowSizePopup(true)
+    }
+
+    const createGame = async (size: number = 8) => {
         try {
             setLoading(true)
             setError(null)
@@ -63,16 +85,11 @@ export default function MemoryGame({ initialSize }: MemoryGameProps) {
             })
             if (!response.ok) throw new Error('Failed to create game')
             const data = await response.json()
-            setGameState(data)
+            navigate({ to: '/memory/game/$id', params: { id: data.game.id.toString() } })
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create game')
-        } finally {
             setLoading(false)
         }
-    }, [user])
-
-    const handleNewGame = () => {
-        setShowSizePopup(true)
     }
 
     const handleSizeSelect = (size: number) => {
@@ -120,12 +137,8 @@ export default function MemoryGame({ initialSize }: MemoryGameProps) {
     }
 
     useEffect(() => {
-        if (initialSize) {
-            createGame(initialSize)
-        } else {
-            createGame()
-        }
-    }, [createGame, initialSize])
+        loadGame()
+    }, [loadGame])
 
     if (loading) {
         return (
@@ -146,7 +159,7 @@ export default function MemoryGame({ initialSize }: MemoryGameProps) {
                     <p className="text-center text-red-600 mb-6">{error}</p>
                     <button
                         type="button"
-                        onClick={() => createGame()}
+                        onClick={() => loadGame()}
                         className="w-full bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-green-600 hover:to-teal-700 transition-all duration-300"
                     >
                         Try Again
