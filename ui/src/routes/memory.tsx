@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Clock } from 'lucide-react'
+import { Plus, Clock, Gamepad2, Trophy, Play } from 'lucide-react'
 import { useState } from 'react'
 
 const MEMORY_SERVICE_URL = 'http://localhost:8003'
@@ -8,12 +8,14 @@ const MEMORY_SERVICE_URL = 'http://localhost:8003'
 interface GameSize {
   label: string
   size: number
+  description: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
 }
 
 const GAME_SIZES: GameSize[] = [
-  { label: '4x4', size: 8 },
-  { label: '6x6', size: 18 },
-  { label: '8x8', size: 32 },
+  { label: '4x4', size: 8, description: 'Perfect for beginners', difficulty: 'Easy' },
+  { label: '6x6', size: 18, description: 'A balanced challenge', difficulty: 'Medium' },
+  { label: '8x8', size: 32, description: 'For memory masters', difficulty: 'Hard' },
 ]
 
 export const Route = createFileRoute('/memory')({
@@ -53,27 +55,90 @@ function Memory() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 to-teal-100 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="max-w-4xl mx-auto p-6">
         {!isGameRoute && (
           <>
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-800">Memory Games</h1>
-              <button
-                onClick={handleNewGame}
-                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-teal-600 text-white font-semibold py-2 px-4 rounded-lg hover:from-green-600 hover:to-teal-700 transition-all duration-300"
-              >
-                <Plus size={20} />
-                New Game
-              </button>
+            {/* Header */}
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-bold text-slate-800 mb-3">Memory Game</h1>
+              <p className="text-slate-600 max-w-xl mx-auto">
+                Test your memory by matching pairs of cards. Flip two cards at a time and find all matching pairs to win.
+              </p>
             </div>
 
-            <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Previous Games</h2>
-              <div className="text-center py-12 text-gray-500">
-                <Clock size={48} className="mx-auto mb-4 text-gray-400" />
-                <p>No previous games found</p>
-                <p className="text-sm mt-2">Start a new game to begin playing!</p>
+            {/* Quick Start */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Play size={24} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Ready to play?</h2>
+                    <p className="text-slate-500 text-sm">Start a new game</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleNewGame}
+                  className="flex items-center gap-2 bg-blue-600 text-white font-medium py-2.5 px-5 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus size={18} />
+                  New Game
+                </button>
+              </div>
+            </div>
+
+            {/* How to Play */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8">
+              <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
+                <Gamepad2 size={20} className="text-blue-500" />
+                How to Play
+              </h2>
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <span className="text-blue-600 font-semibold">1</span>
+                  </div>
+                  <h3 className="font-medium text-slate-900 mb-1">Flip Cards</h3>
+                  <p className="text-slate-500 text-sm">Click to reveal card images</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <span className="text-blue-600 font-semibold">2</span>
+                  </div>
+                  <h3 className="font-medium text-slate-900 mb-1">Match Pairs</h3>
+                  <p className="text-slate-500 text-sm">Find matching card pairs</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <span className="text-blue-600 font-semibold">3</span>
+                  </div>
+                  <h3 className="font-medium text-slate-900 mb-1">Collect & Win</h3>
+                  <p className="text-slate-500 text-sm">Collect more pairs than opponent</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Previous Games */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
+                <Trophy size={20} className="text-amber-500" />
+                Previous Games
+              </h2>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock size={32} className="text-slate-400" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-900 mb-1">No games played yet</h3>
+                <p className="text-slate-500 text-sm mb-4">Start your first game</p>
+                <button
+                  onClick={handleNewGame}
+                  className="inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 font-medium py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <Plus size={16} />
+                  Start Game
+                </button>
               </div>
             </div>
           </>
@@ -81,24 +146,31 @@ function Memory() {
 
         <Outlet />
 
+        {/* Size Selection Popup */}
         {showSizePopup && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Select Game Size</h2>
-              <div className="grid grid-cols-2 gap-4">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Select Game Size</h2>
+              <p className="text-slate-500 text-sm mb-5">Choose your difficulty level</p>
+              <div className="space-y-3 mb-5">
                 {GAME_SIZES.map((gameSize) => (
                   <button
                     key={gameSize.label}
                     onClick={() => handleSizeSelect(gameSize.size)}
-                    className="bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold py-4 px-6 rounded-xl hover:from-green-600 hover:to-teal-700 transition-all duration-300 text-xl"
+                    className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
                   >
-                    {gameSize.label}
+                    <div>
+                      <span className="font-semibold text-slate-900 group-hover:text-blue-600">{gameSize.label}</span>
+                      <span className="text-slate-400 mx-2">•</span>
+                      <span className="text-slate-500 text-sm">{gameSize.difficulty}</span>
+                      <p className="text-slate-400 text-xs mt-1">{gameSize.description}</p>
+                    </div>
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => setShowSizePopup(false)}
-                className="w-full mt-4 bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-all duration-300"
+                className="w-full bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg hover:bg-slate-200 transition-colors"
               >
                 Cancel
               </button>
