@@ -27,6 +27,7 @@ class Game(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     userId = Column(Integer, nullable=False)
+    size = Column(Integer, nullable=False)  # Size of the game (number of pairs)
     winner = Column(String, nullable=True)  # Stores enum string values: "none", "draw", "player1", "player2"
     currentTurn = Column(Boolean, nullable=False)
     
@@ -62,6 +63,7 @@ async def startup_event():
 # Pydantic models for requests
 class GameCreate(BaseModel):
     userId: int
+    size: int
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: bool = True
 
@@ -80,6 +82,7 @@ class MoveCardsRequest(BaseModel):
 
 class GameUpdate(BaseModel):
     userId: Optional[int] = None
+    size: Optional[int] = None
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: Optional[bool] = None
 
@@ -141,6 +144,7 @@ def create_game(game: GameCreate):
     try:
         new_game = Game(
             userId=game.userId,
+            size=game.size,
             winner=game.winner,
             currentTurn=game.currentTurn
         )
@@ -166,6 +170,8 @@ def update_game(game_id: int, game_update: GameUpdate):
         # Update game fields from request body
         if game_update.userId is not None:
             game.userId = game_update.userId
+        if game_update.size is not None:
+            game.size = game_update.size
         if game_update.winner is not None:
             game.winner = game_update.winner
         if game_update.currentTurn is not None:
@@ -328,6 +334,7 @@ def get_game_state(game_id: int):
             "game": {
                 "id": game.id,
                 "userId": game.userId,
+                "size": game.size,
                 "winner": game.winner,
                 "currentTurn": game.currentTurn
             },
@@ -412,6 +419,59 @@ def move_cards_to_player(request: MoveCardsRequest):
             print(f"DEBUG: After commit, card id={card.id} ownedBy={card.ownedBy}")
         
         return {"message": f"Moved {len(cards)} card(s) to player", "cards": cards}
+    finally:
+        db.close()
+
+# Endpoint to get all games for a specific user
+@app.get("/users/{user_id}/games")
+def get_user_games(user_id: int):
+    """
+    Returns all games for a specific user with their cards categorized by player.
+    Response includes gameId, winner, player1Cards, and player2Cards for each game.
+    """
+    db = SessionLocal()
+    try:
+        # Get all games for the user
+        games = db.query(Game).filter(Game.userId == user_id).all()
+        
+        result = {
+            "games": []
+        }
+        
+        for game in games:
+            # Get all cards for this game
+            cards = db.query(Card).filter(Card.gameId == game.id).all()
+            
+            # Categorize cards by owner
+            player1_cards = []
+            player2_cards = []
+            
+            for card in cards:
+                card_data = {
+                    "id": card.id,
+                    "localId": card.localId,
+                    "flipped": card.flipped,
+                    "image": card.image,
+                    "kindId": card.kindId,
+                    "ownedBy": card.ownedBy
+                }
+                
+                if card.ownedBy is False:
+                    player1_cards.append(card_data)
+                elif card.ownedBy is True:
+                    player2_cards.append(card_data)
+            
+            game_data = {
+                "gameId": game.id,
+                "size": game.size,
+                "winner": game.winner,
+                "player1Cards": player1_cards,
+                "player2Cards": player2_cards
+            }
+            
+            result["games"].append(game_data)
+        
+        return result
     finally:
         db.close()
 

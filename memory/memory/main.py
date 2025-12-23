@@ -133,6 +133,34 @@ async def get_game_status(game_id: int):
             detail=f"Unexpected error: {str(e)}"
         )
 
+@app.get("/user_games/{user_id}")
+async def get_user_games(user_id: int):
+    """
+    Forwards user_games request to memory_logic service
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{MEMORY_LOGIC_URL}/user_games/{user_id}")
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to get user games: {response.text}"
+                )
+            
+            return response.json()
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory_logic service: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error: {str(e)}"
+        )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

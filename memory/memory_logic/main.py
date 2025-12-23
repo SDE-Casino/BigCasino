@@ -82,6 +82,7 @@ async def create_game(request: CreateGameRequest):
                 f"{MEMORY_ADAPTER_URL}/games",
                 json={
                     "userId": request.userId,
+                    "size": request.size,
                     "currentTurn": False
                 }
             )
@@ -342,6 +343,38 @@ async def get_game_status(game_id: int):
             
             game_state = game_state_response.json()
             return strip_private_info(game_state)
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory adapter: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
+
+@app.get("/user_games/{user_id}")
+async def get_user_games(user_id: int):
+    """
+    Returns all games for a specific user with their cards categorized by player.
+    Calls memory_adapter's /users/{user_id}/games endpoint.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get user games from memory_adapter
+            response = await client.get(f"{MEMORY_ADAPTER_URL}/users/{user_id}/games")
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get user games: {response.text}"
+                )
+            
+            return response.json()
                 
     except httpx.RequestError as e:
         raise HTTPException(

@@ -1,9 +1,43 @@
 import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Clock, Gamepad2, Trophy, Play } from 'lucide-react'
-import { useState } from 'react'
+import { Plus, Clock, Gamepad2, Trophy, Play, User, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 const MEMORY_SERVICE_URL = 'http://localhost:8003'
+
+interface Card {
+  id: number
+  localId: number
+  flipped: boolean
+  image: string
+  kindId: number
+  ownedBy: boolean | null
+}
+
+interface Game {
+  gameId: number
+  size: number
+  winner: string | null
+  player1Cards: Card[]
+  player2Cards: Card[]
+}
+
+// Helper function to convert size to grid label
+function getSizeLabel(size: number | null | undefined): string {
+  if (size === null || size === undefined) {
+    return 'Unknown'
+  }
+  const sizeMap: Record<number, string> = {
+    8: '4x4',
+    18: '6x6',
+    32: '8x8',
+  }
+  return sizeMap[size] || `${Math.sqrt(size * 2)}x${Math.sqrt(size * 2)}`
+}
+
+interface UserGamesResponse {
+  games: Game[]
+}
 
 interface GameSize {
   label: string
@@ -27,10 +61,33 @@ function Memory() {
   const location = useLocation()
   const navigate = useNavigate()
   const [showSizePopup, setShowSizePopup] = useState(false)
+  const [userGames, setUserGames] = useState<Game[]>([])
+  const [loadingGames, setLoadingGames] = useState(true)
 
   if (!isAuthenticated) {
     throw redirect({ to: '/auth' })
   }
+
+  // Fetch user's games on mount and when navigating back to memory page
+  useEffect(() => {
+    const fetchUserGames = async () => {
+      try {
+        const response = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`)
+        if (!response.ok) throw new Error('Failed to fetch games')
+        const data: UserGamesResponse = await response.json()
+        setUserGames(data.games)
+      } catch (err) {
+        console.error('Failed to fetch user games:', err)
+      } finally {
+        setLoadingGames(false)
+      }
+    }
+
+    // Only fetch when on the memory page (not on game sub-routes)
+    if (!isGameRoute) {
+      fetchUserGames()
+    }
+  }, [user?.id, location.pathname])
 
   const isGameRoute = location.pathname.startsWith('/memory/game/')
 
@@ -126,20 +183,76 @@ function Memory() {
                 <Trophy size={20} className="text-amber-500" />
                 Previous Games
               </h2>
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock size={32} className="text-slate-400" />
+
+              {loadingGames ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock size={32} className="text-slate-400 animate-pulse" />
+                  </div>
+                  <p className="text-slate-500 text-sm">Loading games...</p>
                 </div>
-                <h3 className="text-lg font-medium text-slate-900 mb-1">No games played yet</h3>
-                <p className="text-slate-500 text-sm mb-4">Start your first game</p>
-                <button
-                  onClick={handleNewGame}
-                  className="inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 font-medium py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
-                >
-                  <Plus size={16} />
-                  Start Game
-                </button>
-              </div>
+              ) : userGames.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock size={32} className="text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 mb-1">No games played yet</h3>
+                  <p className="text-slate-500 text-sm mb-4">Start your first game</p>
+                  <button
+                    onClick={handleNewGame}
+                    className="inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 font-medium py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
+                  >
+                    <Plus size={16} />
+                    Start Game
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {userGames.map((game) => (
+                    <button
+                      key={game.gameId}
+                      onClick={() => navigate({ to: '/memory/game/$id', params: { id: game.gameId.toString() } })}
+                      className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="font-semibold text-slate-900 group-hover:text-blue-600">
+                            Game #{game.gameId}
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                            {getSizeLabel(game.size)}
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <span className={`text-sm font-medium ${!game.winner || game.winner === 'none'
+                            ? 'text-blue-600'
+                            : game.winner === 'player1'
+                              ? 'text-green-600'
+                              : game.winner === 'player2'
+                                ? 'text-amber-600'
+                                : 'text-slate-500'
+                            }`}>
+                            {!game.winner || game.winner === 'none' ? 'In Progress' :
+                              game.winner === 'player1' ? 'Player 1 Won' :
+                                game.winner === 'player2' ? 'Player 2 Won' : 'Draw'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <User size={14} />
+                            <span>P1: {game.player1Cards.length}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <User size={14} />
+                            <span>P2: {game.player2Cards.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
