@@ -3,7 +3,7 @@ import requests
 # TODO: error handling for HTTP requests
 
 # URL where to get data from the deck adapter
-URL = "http://localhost:8002"
+URL = "http://deck_adapter:8000"
 
 value_mapping = {
     'ACE':      1,

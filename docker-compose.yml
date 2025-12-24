@@ -55,6 +55,22 @@ services:
     depends_on:
       - memory_logic
 
+  deck_adapter:
+    build:
+      context: ./solitaire/deck_adapter
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    restart: unless-stopped
+
+  solitaire_logic:
+    build:
+      context: ./solitaire/solitaire_logic
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8000"
+    restart: unless-stopped
+
   ui:
     build:
       context: ./ui
