@@ -270,13 +270,18 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     if (isProcessing) return
     setIsProcessing(true)
     try {
+      console.log('Drawing cards. Current talon before:', gameState?.talon)
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/draw_cards/${gameId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
       if (!response.ok) throw new Error('Failed to draw cards')
       const data = await response.json()
+      console.log('Draw cards response:', data)
+      console.log('New talon after draw:', data.game_state.talon)
       setGameState(data.game_state)
+      // Clear selected card when drawing new cards, as the talon has changed
+      setSelectedCard(null)
       if (data.game_status === 'won') {
         setWon(true)
       }
@@ -299,6 +304,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       if (!response.ok) throw new Error('Failed to reset stock')
       const data = await response.json()
       setGameState(data.game_state)
+      // Clear selected card when resetting stock, as the talon has changed
+      setSelectedCard(null)
       if (data.game_status === 'won') {
         setWon(true)
       }
@@ -318,19 +325,28 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
   ) => {
     if (isProcessing || won) return
 
+    console.log('Card clicked:', { card, source, sourceIndex, cardIndex })
+    console.log('Current selectedCard:', selectedCard)
+    console.log('Current talon:', gameState?.talon)
+
     // If no card is selected, select this card
     if (!selectedCard) {
       setSelectedCard({ card, source, sourceIndex, cardIndex })
+      console.log('Selected card:', { card, source, sourceIndex, cardIndex })
       return
     }
 
     // If clicking the same card, deselect it
-    if (
-      selectedCard.card === card &&
+    // Compare card properties instead of object reference to handle state updates
+    const isSameCard =
+      selectedCard.card.value === card.value &&
+      selectedCard.card.suit === card.suit &&
       selectedCard.source === source &&
       selectedCard.sourceIndex === sourceIndex &&
       selectedCard.cardIndex === cardIndex
-    ) {
+
+    if (isSameCard) {
+      console.log('Deselecting card')
       setSelectedCard(null)
       return
     }
@@ -640,7 +656,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
               </div>
             </div>
 
-            {/* Talon - shows up to 3 cards stacked, only top one selectable */}
+            {/* Talon - shows up to 3 cards stacked, all selectable */}
             <div className="flex items-center gap-4">
               <div className="text-slate-500 text-sm">
                 <p className="font-medium">Talon</p>
@@ -653,7 +669,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
                     {talon.slice(-3).map((card: any, index: number) => {
                       const actualIndex = talon.length - 3 + index
                       const isTopCard = actualIndex === talon.length - 1
-                      const isSelected = selectedCard?.source === 'talon' && selectedCard.sourceIndex === talon.length - 1
+                      const isSelected = selectedCard?.source === 'talon' && selectedCard.sourceIndex === actualIndex
                       return (
                         <div
                           key={actualIndex}
@@ -662,30 +678,19 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
                             left: `${index * 40}px`,
                           }}
                         >
-                          {isTopCard ? (
-                            <button
-                              type="button"
-                              onClick={() => handleCardClick(card, 'talon', talon.length - 1)}
-                              disabled={isProcessing}
-                              className="w-20 h-28"
-                            >
-                              <Card
-                                card={card}
-                                faceUp={true}
-                                selected={isSelected}
-                                onClick={() => { }}
-                              />
-                            </button>
-                          ) : (
-                            <div className="w-20 h-28">
-                              <Card
-                                card={card}
-                                faceUp={true}
-                                selected={false}
-                                onClick={() => { }}
-                              />
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleCardClick(card, 'talon', actualIndex)}
+                            disabled={isProcessing}
+                            className="w-20 h-28"
+                          >
+                            <Card
+                              card={card}
+                              faceUp={true}
+                              selected={isSelected}
+                              onClick={() => { }}
+                            />
+                          </button>
                         </div>
                       )
                     })}
