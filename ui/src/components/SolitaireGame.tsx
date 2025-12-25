@@ -53,31 +53,13 @@ function Confetti({ active }: { active: boolean }) {
 
 // Card component
 interface CardProps {
-  card: { value: string; suit: string }
+  card: { value: string; suit: string; image?: string }
   faceUp: boolean
   selected: boolean
   onClick: () => void
 }
 
 function Card({ card, faceUp, selected, onClick }: CardProps) {
-  const suitSymbols: Record<string, string> = {
-    HEARTS: '♥',
-    DIAMONDS: '♦',
-    CLUBS: '♣',
-    SPADES: '♠',
-  }
-
-  const valueEmojis: Record<string, string> = {
-    'ACE': '⭐',
-    'JACK': '🎩',
-    'QUEEN': '👸',
-    'KING': '🤴',
-  }
-
-  const isRed = card.suit === 'HEARTS' || card.suit === 'DIAMONDS'
-  const symbol = suitSymbols[card.suit] || card.suit[0]
-  const cornerValue = valueEmojis[card.value] || card.value
-
   if (!faceUp) {
     return (
       <div
@@ -93,26 +75,24 @@ function Card({ card, faceUp, selected, onClick }: CardProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full h-full rounded-lg shadow-md border-2 cursor-pointer transition-all duration-200 ${selected
+      className={`w-full h-full rounded-lg shadow-md border-2 cursor-pointer transition-all duration-200 overflow-hidden ${selected
         ? 'border-yellow-400 ring-4 ring-yellow-400/50 scale-105'
         : 'border-slate-300 hover:scale-105 hover:shadow-lg'
         } bg-white relative`}
     >
-      {/* Top-left corner indicator */}
-      <div className={`absolute top-1 left-1 flex flex-row items-center gap-0.5 ${isRed ? 'text-red-600' : 'text-slate-800'}`}>
-        <span className="text-sm font-bold leading-none">{cornerValue}</span>
-        <span className="text-base leading-none">{symbol}</span>
-      </div>
-      {/* Bottom-right corner indicator (rotated) */}
-      <div className={`absolute bottom-1 right-1 flex flex-row items-center gap-0.5 rotate-180 ${isRed ? 'text-red-600' : 'text-slate-800'}`}>
-        <span className="text-sm font-bold leading-none">{cornerValue}</span>
-        <span className="text-base leading-none">{symbol}</span>
-      </div>
-      {/* Center large symbol */}
-      <div className={`w-full h-full rounded-lg flex flex-col items-center justify-center ${isRed ? 'text-red-600' : 'text-slate-800'}`}>
-        <span className="text-2xl font-bold">{card.value}</span>
-        <span className="text-3xl">{symbol}</span>
-      </div>
+      {card.image ? (
+        <img
+          src={card.image}
+          alt={`${card.value} of ${card.suit}`}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        // Fallback to custom rendering if image is not available
+        <div className="w-full h-full flex flex-col items-center justify-center p-2">
+          <span className="text-lg font-bold">{card.value}</span>
+          <span className="text-2xl">{card.suit[0]}</span>
+        </div>
+      )}
     </button>
   )
 }
