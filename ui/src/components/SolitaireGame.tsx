@@ -15,6 +15,59 @@ const storeGameState = (gameId: string, state: any) => {
   ; (window as any).__solitaireGameStates[gameId] = state
 }
 
+// Preload all card images from game state
+const preloadCardImages = async (gameState: any): Promise<void> => {
+  const imageUrls = new Set<string>()
+
+  // Collect all unique image URLs from the game state
+  const collectImages = (cards: any[]) => {
+    cards.forEach(card => {
+      if (typeof card === 'object' && card !== null) {
+        // Handle card tuples [card, faceUp]
+        if (Array.isArray(card)) {
+          const cardObj = card[0]
+          if (cardObj?.image) {
+            imageUrls.add(cardObj.image)
+          }
+        } else if (card.image) {
+          // Handle plain card objects
+          imageUrls.add(card.image)
+        }
+      }
+    })
+  }
+
+  // Collect images from all piles
+  if (gameState?.tableau) {
+    gameState.tableau.forEach((column: any[]) => collectImages(column))
+  }
+  if (gameState?.stock) {
+    collectImages(gameState.stock)
+  }
+  if (gameState?.talon) {
+    collectImages(gameState.talon)
+  }
+  if (gameState?.foundation) {
+    Object.values(gameState.foundation).forEach((pile: unknown) => {
+      if (Array.isArray(pile)) {
+        collectImages(pile)
+      }
+    })
+  }
+
+  // Preload all images
+  const preloadPromises = Array.from(imageUrls).map(url => {
+    return new Promise<void>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve()
+      img.onerror = () => resolve() // Resolve even on error to not block the game
+      img.src = url
+    })
+  })
+
+  await Promise.all(preloadPromises)
+}
+
 // Confetti component
 function Confetti({ active }: { active: boolean }) {
   if (!active) return null
@@ -125,6 +178,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       const storedState = storedStates[gameId]
 
       if (storedState) {
+        // Preload card images
+        await preloadCardImages(storedState)
         setGameState(storedState)
         setLoading(false)
         return
@@ -153,6 +208,10 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       console.log(response)
       if (!response.ok) throw new Error('Failed to create game')
       const data = await response.json()
+
+      // Preload card images
+      await preloadCardImages(data.game_state)
+
       setGameState(data.game_state)
       setWon(false)
       setSelectedCard(null)
@@ -420,7 +479,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4 animate-in fade-in duration-500">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 animate-pulse">Loading game...</p>
+          <p className="text-slate-600 animate-pulse">Loading game and preloading card images...</p>
           <div className="flex justify-center gap-2 mt-4">
             <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
