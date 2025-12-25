@@ -1,8 +1,42 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Trophy, RotateCcw, ArrowLeft, RefreshCw, Sparkles } from 'lucide-react'
+import { Trophy, RotateCcw, ArrowLeft, RefreshCw, Sparkles, XCircle, AlertCircle } from 'lucide-react'
 
 const SOLITAIRE_SERVICE_URL = 'http://localhost:8005'
+
+// Toast notification component
+interface ToastProps {
+  message: string
+  type: 'error' | 'warning'
+  onClose: () => void
+}
+
+function Toast({ message, type, onClose }: ToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  return (
+    <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white rounded-xl shadow-lg p-5 border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-md w-full">
+      <div className="flex items-start gap-4">
+        {type === 'error' ? (
+          <XCircle size={24} className="text-red-500 flex-shrink-0 mt-0.5" />
+        ) : (
+          <AlertCircle size={24} className="text-amber-500 flex-shrink-0 mt-0.5" />
+        )}
+        <p className="text-slate-700 text-base flex-1">{message}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <XCircle size={18} />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // Import game states from parent route
 // @ts-ignore
@@ -159,6 +193,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
   const [gameState, setGameState] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'warning' } | null>(null)
   const [selectedCard, setSelectedCard] = useState<{
     card: { value: string; suit: string }
     source: 'tableau' | 'talon' | 'foundation'
@@ -167,6 +202,10 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
   } | null>(null)
   const [won, setWon] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+
+  const showToast = useCallback((message: string, type: 'error' | 'warning' = 'error') => {
+    setToast({ message, type })
+  }, [])
 
   const loadGame = useCallback(async () => {
     try {
@@ -242,7 +281,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         setWon(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to draw cards')
+      showToast(err instanceof Error ? err.message : 'Failed to draw cards', 'warning')
+      setSelectedCard(null)
     } finally {
       setIsProcessing(false)
     }
@@ -263,7 +303,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         setWon(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset stock')
+      showToast(err instanceof Error ? err.message : 'Failed to reset stock', 'warning')
+      setSelectedCard(null)
     } finally {
       setIsProcessing(false)
     }
@@ -356,7 +397,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         setWon(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to move card')
+      showToast(err instanceof Error ? err.message : 'Failed to move card', 'warning')
+      setSelectedCard(null)
     } finally {
       setIsProcessing(false)
     }
@@ -408,7 +450,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         setWon(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to move card')
+      showToast(err instanceof Error ? err.message : 'Failed to move card', 'warning')
+      setSelectedCard(null)
     } finally {
       setIsProcessing(false)
     }
@@ -464,7 +507,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         setWon(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to move card')
+      showToast(err instanceof Error ? err.message : 'Failed to move card', 'warning')
+      setSelectedCard(null)
     } finally {
       setIsProcessing(false)
     }
@@ -531,6 +575,13 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Confetti active={won} />
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       <div className="max-w-6xl mx-auto p-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
