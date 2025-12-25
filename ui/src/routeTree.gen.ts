@@ -13,6 +13,7 @@ import { Route as SolitaireRouteImport } from './routes/solitaire'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SolitaireGameIdRouteImport } from './routes/solitaire/game/$id'
 import { Route as MemoryGameIdRouteImport } from './routes/memory/game/$id'
 
 const SolitaireRoute = SolitaireRouteImport.update({
@@ -35,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SolitaireGameIdRoute = SolitaireGameIdRouteImport.update({
+  id: '/game/$id',
+  path: '/game/$id',
+  getParentRoute: () => SolitaireRoute,
+} as any)
 const MemoryGameIdRoute = MemoryGameIdRouteImport.update({
   id: '/game/$id',
   path: '/game/$id',
@@ -45,37 +51,59 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/memory': typeof MemoryRouteWithChildren
-  '/solitaire': typeof SolitaireRoute
+  '/solitaire': typeof SolitaireRouteWithChildren
   '/memory/game/$id': typeof MemoryGameIdRoute
+  '/solitaire/game/$id': typeof SolitaireGameIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/memory': typeof MemoryRouteWithChildren
-  '/solitaire': typeof SolitaireRoute
+  '/solitaire': typeof SolitaireRouteWithChildren
   '/memory/game/$id': typeof MemoryGameIdRoute
+  '/solitaire/game/$id': typeof SolitaireGameIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/memory': typeof MemoryRouteWithChildren
-  '/solitaire': typeof SolitaireRoute
+  '/solitaire': typeof SolitaireRouteWithChildren
   '/memory/game/$id': typeof MemoryGameIdRoute
+  '/solitaire/game/$id': typeof SolitaireGameIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game/$id'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/memory'
+    | '/solitaire'
+    | '/memory/game/$id'
+    | '/solitaire/game/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game/$id'
-  id: '__root__' | '/' | '/auth' | '/memory' | '/solitaire' | '/memory/game/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/memory'
+    | '/solitaire'
+    | '/memory/game/$id'
+    | '/solitaire/game/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/memory'
+    | '/solitaire'
+    | '/memory/game/$id'
+    | '/solitaire/game/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   MemoryRoute: typeof MemoryRouteWithChildren
-  SolitaireRoute: typeof SolitaireRoute
+  SolitaireRoute: typeof SolitaireRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -108,6 +136,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/solitaire/game/$id': {
+      id: '/solitaire/game/$id'
+      path: '/game/$id'
+      fullPath: '/solitaire/game/$id'
+      preLoaderRoute: typeof SolitaireGameIdRouteImport
+      parentRoute: typeof SolitaireRoute
+    }
     '/memory/game/$id': {
       id: '/memory/game/$id'
       path: '/game/$id'
@@ -129,11 +164,23 @@ const MemoryRouteChildren: MemoryRouteChildren = {
 const MemoryRouteWithChildren =
   MemoryRoute._addFileChildren(MemoryRouteChildren)
 
+interface SolitaireRouteChildren {
+  SolitaireGameIdRoute: typeof SolitaireGameIdRoute
+}
+
+const SolitaireRouteChildren: SolitaireRouteChildren = {
+  SolitaireGameIdRoute: SolitaireGameIdRoute,
+}
+
+const SolitaireRouteWithChildren = SolitaireRoute._addFileChildren(
+  SolitaireRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   MemoryRoute: MemoryRouteWithChildren,
-  SolitaireRoute: SolitaireRoute,
+  SolitaireRoute: SolitaireRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
