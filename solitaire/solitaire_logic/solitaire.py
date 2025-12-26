@@ -1,9 +1,7 @@
 import requests
+import os
 
-# TODO: error handling for HTTP requests
-
-# URL where to get data from the deck adapter
-URL = "http://localhost:8002"
+URL = os.getenv("DECK_ADAPTER_URL")
 
 value_mapping = {
     'ACE':      1,
