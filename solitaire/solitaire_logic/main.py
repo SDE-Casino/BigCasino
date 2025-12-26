@@ -83,7 +83,7 @@ def reset_stock(game_id: str):
         raise HTTPException(status_code=404, detail="Game not found")
 
     try:
-        game.reset_stock_from_talon()
+        game.reload_stock_from_talon()
     except Exception as e:
         raise HTTPException(status_code=409, detail=str(e))
 

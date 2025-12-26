@@ -71,6 +71,8 @@ def get_image_base64():
     try:
         base64_image = getBase64Image()
         return {"image": base64_image}
+        # return {"image": "placeholder"}
+
     except Exception as e:
         return {"error": str(e)}
 

@@ -1,352 +1,428 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Union
-import uuid
-from datetime import datetime
-import os
-import json
-import random
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import httpx
+import random
+import copy
+from typing import List, Optional
 
-# Configuration
-MEMORY_ADAPTER_URL = os.environ.get("MEMORY_ADAPTER_URL", "http://memory_adapter:8001")
-IMAGE_ADAPTER_URL = os.environ.get("IMAGE_ADAPTER_URL", "http://image_adapter:8000")
+app = FastAPI(title="Memory Logic Service", description="A simple FastAPI service for memory logic operations")
 
-# Pydantic Models
-class CardModel(BaseModel):
-    cardId: int
-    image: str  # base64 encoded image
-    isFlipped: bool = False
-    isCollected: bool = False
-
-class PlayerModel(BaseModel):
-    cards: List[Dict]  # Player's collected cards (stored as dicts)
-
-class GameStateModel(BaseModel):
-    id: str
-    userId: str
-    deckId: str
-    size: int
-    tableState: List[Dict]  # List of cards with flipped state
-    player1: PlayerModel
-    player2: PlayerModel
-    currentTurn: bool  # True for player1, False for player2
-    isGameOver: bool = False
-    winner: Optional[str] = None  # "player1" or "player2"
-
+# Pydantic models for request/response
 class CreateGameRequest(BaseModel):
-    userId: str
-    size: int  # Number of pairs of cards (total cards will be size * 2)
+    userId: int
+    size: int
+
+class CardResponse(BaseModel):
+    id: int
+    localId: int
+    gameId: int
+    flipped: bool
+    ownedBy: Optional[bool]
+    image: str
+    kindId: int
+
+class GameResponse(BaseModel):
+    id: int
+    userId: int
+    winner: Optional[str]  # Can be "none", "draw", "player1", "player2", or None
+    currentTurn: bool
+
+class CreateGameResponse(BaseModel):
+    game: GameResponse
+    cards: List[CardResponse]
 
 class FlipCardRequest(BaseModel):
-    game_id: str
-    card_index: int
-    player: str  # "player1" or "player2"
+    game_id: int
+    local_id: int
 
-class FlipCardResponse(BaseModel):
-    game_state: GameStateModel
-    match_found: bool
-    cards_collected: List[Dict]  # Cards that were collected if a match was found
+# Service URLs
+MEMORY_ADAPTER_URL = "http://memory_adapter:8000"
+IMAGE_ADAPTER_URL = "http://image_adapter:8000"
 
-# FastAPI App
-app = FastAPI(title="Memory Logic API", description="API for Memory Game Logic")
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Helper functions to communicate with memory_adapter
-async def get_game_from_adapter(game_id: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{MEMORY_ADAPTER_URL}/games/{game_id}")
-        if response.status_code == 404:
-            raise HTTPException(status_code=404, detail="Game not found")
-        response.raise_for_status()
-        return response.json()
-
-async def get_image_from_image_adapter():
-    """Get a base64 encoded image from the image_adapter service"""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{IMAGE_ADAPTER_URL}/image/base64")
-        response.raise_for_status()
-        return response.json()["image"]
-
-async def create_game_in_adapter(user_id: str, size: int):
-    # Create cards for the game by fetching images from the image_adapter service
-    cards = []
+def strip_private_info(game_state: dict) -> dict:
+    """
+    Creates a new dictionary where image and kindId are included only if flipped is true.
+    Only processes cards in tableCards, leaving player1Cards and player2Cards unchanged.
+    """
+    # Create a deep copy of the game state to avoid modifying the original
+    stripped_state = copy.deepcopy(game_state)
     
-    # Get unique images for each pair of cards
-    for i in range(size):
-        image = await get_image_from_image_adapter()
-        cards.append({"cardId": i, "image": image})
-        cards.append({"cardId": i, "image": image})
+    # Process tableCards to remove private info from unflipped cards
+    table_cards = stripped_state.get("tableCards", [])
+    for card in table_cards:
+        if not card.get("flipped", False):
+            # Remove private info for unflipped cards
+            card.pop("image", None)
+            card.pop("kindId", None)
     
-    # Shuffle the cards
-    random.shuffle(cards)
+    print(f"DEBUG strip_private_info: player1Cards count={len(stripped_state.get('player1Cards', []))}, player2Cards count={len(stripped_state.get('player2Cards', []))}")
     
-    game_data = {
-        "userId": user_id,
-        "size": size,
-        "cards": cards
-    }
-    
-    async with httpx.AsyncClient() as client:
-        response = await client.post(f"{MEMORY_ADAPTER_URL}/games", json=game_data)
-        response.raise_for_status()
-        return response.json()
+    return stripped_state
 
-async def update_card_flip_in_adapter(game_id: str, card_index: int):
-    async with httpx.AsyncClient() as client:
-        response = await client.put(f"{MEMORY_ADAPTER_URL}/games/{game_id}/flip?card_index={card_index}")
-        response.raise_for_status()
-        return response.json()
-
-async def update_table_state_in_adapter(game_id: str, table_state: List[Dict]):
-    async with httpx.AsyncClient() as client:
-        response = await client.put(f"{MEMORY_ADAPTER_URL}/games/{game_id}/table-state", json=table_state)
-        response.raise_for_status()
-        return response.json()
-
-async def update_player_data_in_adapter(game_id: str, player_num: int, player_data: Dict):
-    async with httpx.AsyncClient() as client:
-        response = await client.put(f"{MEMORY_ADAPTER_URL}/games/{game_id}/player/{player_num}", json=player_data)
-        response.raise_for_status()
-        return response.json()
-
-async def update_turn_in_adapter(game_id: str, current_turn: bool):
-    async with httpx.AsyncClient() as client:
-        response = await client.put(f"{MEMORY_ADAPTER_URL}/games/{game_id}/turn?current_turn={current_turn}")
-        response.raise_for_status()
-        return response.json()
-
-async def delete_game_in_adapter(game_id: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.delete(f"{MEMORY_ADAPTER_URL}/games/{game_id}")
-        response.raise_for_status()
-        return response
-
-# Game logic functions
-def convert_adapter_game_to_game_state(adapter_game: dict) -> GameStateModel:
-    """Convert the adapter game format to our game state model"""
-    table_state = json.loads(adapter_game["tableState"])
-    player1_data = json.loads(adapter_game["player1"])
-    player2_data = json.loads(adapter_game["player2"])
-    
-    # Convert player data to PlayerModel
-    player1 = PlayerModel(cards=player1_data.get("cards", []))
-    player2 = PlayerModel(cards=player2_data.get("cards", []))
-    
-    # Check if game is over
-    is_game_over = len(table_state) == 0 or all(card.get("isCollected", False) for card in table_state)
-    winner = None
-    
-    if is_game_over:
-        player1_score = len(player1.cards)
-        player2_score = len(player2.cards)
-        if player1_score > player2_score:
-            winner = "player1"
-        elif player2_score > player1_score:
-            winner = "player2"
-        else:
-            winner = "tie"  # It's a tie
-    
-    return GameStateModel(
-        id=adapter_game["id"],
-        userId=adapter_game["userId"],
-        deckId=adapter_game["deckId"],
-        size=adapter_game["size"],
-        tableState=table_state,
-        player1=player1,
-        player2=player2,
-        currentTurn=adapter_game["currentTurn"],
-        isGameOver=is_game_over,
-        winner=winner
-    )
-
-def check_for_match(table_state: List[Dict], flipped_indices: List[int]) -> bool:
-    """Check if the flipped cards form a match"""
-    if len(flipped_indices) != 2:
-        return False
-    
-    card1 = table_state[flipped_indices[0]]
-    card2 = table_state[flipped_indices[1]]
-    
-    # Check if the cardIds match (same image)
-    return card1["cardId"] == card2["cardId"]
-
-# API Endpoints
 @app.get("/")
-def read_root():
-    return {"message": "Memory Logic API is running"}
+async def root():
+    return {"message": "Memory Logic Service is running"}
 
 @app.get("/health")
-def health_check():
+async def health_check():
     return {"status": "healthy"}
 
-@app.post("/games", response_model=GameStateModel, status_code=status.HTTP_201_CREATED)
+@app.post("/create_game")
 async def create_game(request: CreateGameRequest):
-    """Create a new memory game"""
-    # Create the game through the adapter
-    adapter_game = await create_game_in_adapter(request.userId, request.size)
-    
-    # Convert to our game state model
-    game_state = convert_adapter_game_to_game_state(adapter_game)
-    
-    return game_state
-
-@app.get("/games/{game_id}", response_model=GameStateModel)
-async def get_game(game_id: str):
-    """Get a game by ID"""
-    adapter_game = await get_game_from_adapter(game_id)
-    game_state = convert_adapter_game_to_game_state(adapter_game)
-    return game_state
-
-@app.post("/games/{game_id}/flip", response_model=FlipCardResponse)
-async def flip_card(game_id: str, card_index: int, player: str):
-    """Flip a card and handle game logic"""
-    # Validate player
-    if player not in ["player1", "player2"]:
-        raise HTTPException(status_code=400, detail="Player must be 'player1' or 'player2'")
-    
-    # Get the current game state
-    adapter_game = await get_game_from_adapter(game_id)
-    game_state = convert_adapter_game_to_game_state(adapter_game)
-    
-    # Check if it's the player's turn
-    if (player == "player1" and not game_state.currentTurn) or \
-       (player == "player2" and game_state.currentTurn):
-        raise HTTPException(status_code=400, detail="It's not your turn")
-    
-    # Check if the game is already over
-    if game_state.isGameOver:
-        raise HTTPException(status_code=400, detail="Game is already over")
-    
-    # Validate card index
-    if card_index < 0 or card_index >= len(game_state.tableState):
-        raise HTTPException(status_code=400, detail="Invalid card index")
-    
-    # Check if the card is already collected
-    if game_state.tableState[card_index].get("isCollected", False):
-        raise HTTPException(status_code=400, detail="Card is already collected")
-    
-    # Check if the card is already flipped
-    if game_state.tableState[card_index].get("isFlipped", False):
-        raise HTTPException(status_code=400, detail="Card is already flipped")
-    
-    # Flip the card
-    await update_card_flip_in_adapter(game_id, card_index)
-    
-    # Get the updated game state
-    adapter_game = await get_game_from_adapter(game_id)
-    game_state = convert_adapter_game_to_game_state(adapter_game)
-    
-    # Find all currently flipped cards
-    flipped_indices = [i for i, card in enumerate(game_state.tableState) 
-                      if card.get("isFlipped", False) and not card.get("isCollected", False)]
-    
-    match_found = False
-    cards_collected = []
-    
-    # If two cards are flipped, check for a match
-    if len(flipped_indices) == 2:
-        match_found = check_for_match(game_state.tableState, flipped_indices)
-        
-        if match_found:
-            # Mark cards as collected and add to player's collection
-            cards_to_collect = []
-            for idx in flipped_indices:
-                card = game_state.tableState[idx]
-                card["isCollected"] = True
-                card["isFlipped"] = False
-                cards_to_collect.append(card)
+    """
+    Creates a new memory game with the specified userId and size.
+    Creates 2*size cards in pairs, with each pair having its own localId and image.
+    """
+    try:
+        print(f"Creating game with userId={request.userId}, size={request.size}")
+        # Create the game first
+        async with httpx.AsyncClient() as client:
+            # Create a new game with winner=None and currentTurn=False
+            game_response = await client.post(
+                f"{MEMORY_ADAPTER_URL}/games",
+                json={
+                    "userId": request.userId,
+                    "size": request.size,
+                    "currentTurn": False
+                }
+            )
             
-            # Add cards to the current player's collection
-            if player == "player1":
-                game_state.player1.cards.extend(cards_to_collect)
-                player_num = 1
-            else:
-                game_state.player2.cards.extend(cards_to_collect)
-                player_num = 2
+            print(f"Game response status: {game_response.status_code}")
+            print(f"Game response text: {game_response.text}")
             
-            cards_collected = cards_to_collect
+            if game_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to create game: {game_response.text}"
+                )
             
-            # Update the table state in the adapter
-            await update_table_state_in_adapter(game_id, game_state.tableState)
+            game_data = game_response.json()["game"]
+            game_id = game_data["id"]
+            print(f"Created game with ID: {game_id}")
             
-            # Update player data in the adapter
-            if player == "player1":
-                player_data = {"cards": game_state.player1.cards}
-            else:
-                player_data = {"cards": game_state.player2.cards}
-            await update_player_data_in_adapter(game_id, player_num, player_data)
-        else:
-            # No match, flip cards back after a delay
-            # For now, we'll just switch turns
-            game_state.currentTurn = not game_state.currentTurn
+            # Create cards for the game
+            cards = []
+            # We need to create size pairs of cards (2*size cards total)
+            for pair_id in range(request.size):
+                # Get an image for this pair
+                image_response = await client.get(f"{IMAGE_ADAPTER_URL}/image/base64")
+                
+                if image_response.status_code != 200:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to get image: {image_response.text}"
+                    )
+                
+                image_data = image_response.json()["image"]
+                
+                # Create two cards with the same image (a pair)
+                for card_in_pair in range(2):
+                    # Calculate localId: sequential from 0 to 2*size-1
+                    local_id = pair_id * 2 + card_in_pair
+                    
+                    print(f"Creating card with localId={local_id}, gameId={game_id}, kindId={pair_id}, image={image_data[:50]}...")
+                    # Build card data with explicit None for ownedBy
+                    card_data = {
+                        "localId": local_id,
+                        "gameId": game_id,
+                        "flipped": False,
+                        "image": image_data,
+                        "kindId": pair_id
+                    }
+                    # Explicitly set ownedBy to None (null in JSON)
+                    card_data["ownedBy"] = None
+                    card_response = await client.post(
+                        f"{MEMORY_ADAPTER_URL}/cards",
+                        json=card_data
+                    )
+                    
+                    print(f"Card response status: {card_response.status_code}")
+                    print(f"Card response text: {card_response.text}")
+                    
+                    if card_response.status_code != 200:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to create card: {card_response.text}"
+                        )
+                    
+                    card_data = card_response.json()["card"]
+                    cards.append(card_data)
             
-            # Update the turn in the adapter
-            await update_turn_in_adapter(game_id, game_state.currentTurn)
-    
-    # Check if the game is over
-    all_cards_collected = all(card.get("isCollected", False) for card in game_state.tableState)
-    if all_cards_collected:
-        game_state.isGameOver = True
-        player1_score = len(game_state.player1.cards)
-        player2_score = len(game_state.player2.cards)
-        
-        if player1_score > player2_score:
-            game_state.winner = "player1"
-        elif player2_score > player1_score:
-            game_state.winner = "player2"
-        else:
-            game_state.winner = "tie"
-    
-    return FlipCardResponse(
-        game_state=game_state,
-        match_found=match_found,
-        cards_collected=cards_collected
-    )
+            # Shuffle the cards to randomize their positions
+            random.shuffle(cards)
+            
+            # Update all cards with their new localId positions after shuffling
+            for index, card in enumerate(cards):
+                await client.put(
+                    f"{MEMORY_ADAPTER_URL}/cards/{card['id']}",
+                    json={"localId": index}
+                )
+            
+            # Get the game state from memory_adapter
+            game_state_response = await client.get(f"{MEMORY_ADAPTER_URL}/game_state/{game_id}")
+            
+            if game_state_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get game state: {game_state_response.text}"
+                )
+            
+            game_state = game_state_response.json()
+            return strip_private_info(game_state)
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with other services: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
 
-@app.post("/games/{game_id}/end-turn")
-async def end_turn(game_id: str, player: str):
-    """End the current player's turn"""
-    # Validate player
-    if player not in ["player1", "player2"]:
-        raise HTTPException(status_code=400, detail="Player must be 'player1' or 'player2'")
-    
-    # Get the current game state
-    adapter_game = await get_game_from_adapter(game_id)
-    game_state = convert_adapter_game_to_game_state(adapter_game)
-    
-    # Check if it's the player's turn
-    if (player == "player1" and not game_state.currentTurn) or \
-       (player == "player2" and game_state.currentTurn):
-        raise HTTPException(status_code=400, detail="It's not your turn")
-    
-    # Switch turns
-    game_state.currentTurn = not game_state.currentTurn
-    
-    # Update the turn in the adapter
-    await update_turn_in_adapter(game_id, game_state.currentTurn)
-    
-    # Get the updated game state
-    adapter_game = await get_game_from_adapter(game_id)
-    game_state = convert_adapter_game_to_game_state(adapter_game)
-    
-    return game_state
+@app.post("/flip_card")
+async def flip_card(request: FlipCardRequest):
+    """
+    Flips a card and handles game logic for matching cards, turn changes, and winner determination.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Step 1: Find the card by localId and gameId
+            cards_response = await client.get(
+                f"{MEMORY_ADAPTER_URL}/games/{request.game_id}/cards"
+            )
+            
+            if cards_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get cards: {cards_response.text}"
+                )
+            
+            cards = cards_response.json()["cards"]
+            # Find the card with matching localId
+            card_to_flip = None
+            for card in cards:
+                if card["localId"] == request.local_id:
+                    card_to_flip = card
+                    break
+            
+            if card_to_flip is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Card with localId {request.local_id} not found"
+                )
+            
+            # Step 2: Call memory_adapter's flip_card endpoint with the actual card id
+            flip_response = await client.put(
+                f"{MEMORY_ADAPTER_URL}/flip_card/{card_to_flip['id']}"
+            )
+            
+            if flip_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to flip card: {flip_response.text}"
+                )
+            
+            # Step 2: Get current game state
+            game_state_response = await client.get(
+                f"{MEMORY_ADAPTER_URL}/game_state/{request.game_id}"
+            )
+            
+            if game_state_response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get game state: {game_state_response.text}"
+                )
+            
+            # Step 3: Store this game state (will be returned at the end)
+            stored_game_state = game_state_response.json()
+            print(f"DEBUG flip_card: Got game state, currentTurn={stored_game_state.get('game', {}).get('currentTurn')}")
+            
+            # Step 4: Check if there are exactly 2 flipped cards in tableCards
+            table_cards = stored_game_state.get("tableCards", [])
+            flipped_cards = [card for card in table_cards if card.get("flipped", False)]
+            
+            # Step 5: If two flipped cards exist, handle matching logic
+            if len(flipped_cards) == 2:
+                # Sort flipped cards by localId to ensure consistent ordering
+                flipped_cards.sort(key=lambda card: card.get("localId", 0))
+                card1 = flipped_cards[0]
+                card2 = flipped_cards[1]
+                
+                if card1["kindId"] != card2["kindId"]:
+                    # Different kindId: flip both cards back and change turn
+                    await client.put(f"{MEMORY_ADAPTER_URL}/flip_card/{card1['id']}")
+                    await client.put(f"{MEMORY_ADAPTER_URL}/flip_card/{card2['id']}")
+                    await client.post(f"{MEMORY_ADAPTER_URL}/change_turn/{request.game_id}")
+                else:
+                    # Same kindId: move cards to player
+                    # Get fresh game state to get the current turn
+                    fresh_game_state_response = await client.get(
+                        f"{MEMORY_ADAPTER_URL}/game_state/{request.game_id}"
+                    )
+                    
+                    if fresh_game_state_response.status_code == 200:
+                        fresh_game_state = fresh_game_state_response.json()
+                        current_turn = fresh_game_state.get("game", {}).get("currentTurn", False)
+                    else:
+                        # Fallback to stored state if fresh fetch fails
+                        current_turn = stored_game_state.get("game", {}).get("currentTurn", False)
+                    
+                    print(f"DEBUG: Moving cards to player. currentTurn={current_turn}, kindId={card1['kindId']}, gameId={request.game_id}")
+                    await client.post(
+                        f"{MEMORY_ADAPTER_URL}/move_cards_to_player",
+                        json={
+                            "kindId": card1["kindId"],
+                            "player": current_turn,
+                            "gameId": request.game_id
+                        }
+                    )
+                    
+                    # Get new temporary game state to check if tableCards is empty
+                    new_game_state_response = await client.get(
+                        f"{MEMORY_ADAPTER_URL}/game_state/{request.game_id}"
+                    )
+                    
+                    if new_game_state_response.status_code == 200:
+                        new_game_state = new_game_state_response.json()
+                        new_table_cards = new_game_state.get("tableCards", [])
+                        
+                        # If tableCards is empty, update the winner
+                        if len(new_table_cards) == 0:
+                            player1_count = len(new_game_state.get("player1Cards", []))
+                            player2_count = len(new_game_state.get("player2Cards", []))
+                            
+                            if player1_count > player2_count:
+                                winner = "player1"  # Player 1 wins
+                            elif player2_count > player1_count:
+                                winner = "player2"  # Player 2 wins
+                            else:
+                                winner = "draw"  # Tie
+                            
+                            # Update the game with the winner
+                            await client.put(
+                                f"{MEMORY_ADAPTER_URL}/games/{request.game_id}",
+                                json={"winner": winner}
+                            )
+            
+            # Step 6: Return the stored game state from step 2 with private info stripped
+            return strip_private_info(stored_game_state)
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with other services: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
 
-@app.delete("/games/{game_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_game(game_id: str):
-    """Delete a game"""
-    await delete_game_in_adapter(game_id)
-    return None
+@app.get("/game_status/{game_id}")
+async def get_game_status(game_id: int):
+    """
+    Returns the game state with private information stripped.
+    Image and kindId are only included for flipped cards in tableCards.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get the game state from memory_adapter
+            game_state_response = await client.get(f"{MEMORY_ADAPTER_URL}/game_state/{game_id}")
+            
+            if game_state_response.status_code != 200:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Game not found: {game_state_response.text}"
+                )
+            
+            game_state = game_state_response.json()
+            return strip_private_info(game_state)
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory adapter: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+@app.get("/user_games/{user_id}")
+async def get_user_games(user_id: int):
+    """
+    Returns all games for a specific user with their cards categorized by player.
+    Calls memory_adapter's /users/{user_id}/games endpoint.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get user games from memory_adapter
+            response = await client.get(f"{MEMORY_ADAPTER_URL}/users/{user_id}/games")
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to get user games: {response.text}"
+                )
+            
+            return response.json()
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory adapter: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
+
+@app.delete("/delete_game/{game_id}")
+async def delete_game(game_id: int):
+    """
+    Deletes a game by forwarding the request to memory_adapter.
+    This will cascade delete all associated cards.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Forward delete request to memory_adapter
+            response = await client.delete(f"{MEMORY_ADAPTER_URL}/games/{game_id}")
+            
+            if response.status_code == 404:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Game not found: {game_id}"
+                )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to delete game: {response.text}"
+                )
+            
+            return response.json()
+                
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with memory adapter: {str(e)}"
+        )
+    except Exception as e:
+        import traceback
+        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail
+        )
