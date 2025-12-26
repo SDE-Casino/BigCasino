@@ -48,6 +48,9 @@ def logic_post(path: str, json: dict):
 
 @app.post("/register")
 def register(credentials: UserCredentials, response: Response):
+    """
+    Register user with username and password
+    """
     logic_response = logic_post("/register", credentials.dict())
 
     if logic_response.status_code != 200:
@@ -93,6 +96,9 @@ def register(credentials: UserCredentials, response: Response):
 
 @app.post("/login")
 def login(credentials: UserCredentials, response: Response):
+    """
+    Login user with username and password
+    """
     logic_response = logic_post("/login", credentials.dict())
 
     if logic_response.status_code != 200:
@@ -139,6 +145,9 @@ def login(credentials: UserCredentials, response: Response):
 
 @app.post("/refresh")
 def refresh(request: Request):
+    """
+    Provide a new access token for the user
+    """
     token = request.cookies.get("refresh_token")
     if not token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
@@ -169,6 +178,9 @@ def refresh(request: Request):
 
 @app.post("/logout")
 def logout(response: Response):
+    """
+    Logout user by deleting refresh token cookie
+    """
     response.delete_cookie(
         key="refresh_token",
         path="/refresh"
@@ -182,6 +194,9 @@ def logout(response: Response):
 
 @app.get("/google/login")
 def google_login():
+    """
+    Redirect to google service for authentication
+    """
     url = f"{os.getenv('GOOGLE_REDIRECT_URL')}/auth/google"
     return RedirectResponse(url=url)
 
@@ -227,6 +242,9 @@ def google_refresh_token(request: Request, response: Response):
 
 @app.get("/google/verify_token")
 def verify_google_token(request: Request):
+    """
+    Verify google token, retrieve user info from google service
+    """
     url = f"{os.getenv('GOOGLE_AUTH_URL')}/auth/verify"
 
     headers = {}
@@ -253,6 +271,8 @@ def verify_google_token(request: Request):
 
 @app.post("/google/logout")
 def google_logout(response: Response):
-    # logout Google
+    """
+    Logout from google service
+    """
     url = f"{os.getenv('GOOGLE_REDIRECT_URL')}/auth/logout"
     return RedirectResponse(url=url)
