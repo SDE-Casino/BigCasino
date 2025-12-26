@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  adapter:
+    build: ./adapter
+    container_name: adapter
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./adapter:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - default
+
+  logic:
+    build: ./logic
+    container_name: logic
+    env_file:
+      - ./logic/.env
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./logic:/app
+    depends_on:
+      - adapter
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - default
+
+  process-centric:
+    build: ./process-centric
+    container_name: authenticator
+    env_file:
+      - ./process-centric/.env
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./process-centric:/app
+    depends_on:
+      - logic
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
