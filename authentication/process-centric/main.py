@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException, Response, Request
+from fastapi import FastAPI, HTTPException, Response, Request, Cookie, Header
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from typing import Optional
 import requests
 import os
 import jwt
@@ -85,13 +87,11 @@ def refresh(request: Request):
     print(token)
 
     try:
-        print("PRIMA")
         payload = jwt.decode(
             token,
             os.getenv("JWT_SECRET_KEY"),
             algorithms=[os.getenv("JWT_ALGORITHM")]
         )
-        print("DOPO")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh expired")
 
@@ -169,3 +169,35 @@ def logout(response: Response):
         path="/refresh"
     )
     return {"detail": "Logged out successfully"}
+
+@app.get("/google_login")
+def google_login():
+    """
+    Redirect the user to Google's OAuth 2.0 server for authentication
+    """
+    url = os.getenv("GOOGLE_REDIRECT_URL") + "/auth/google"
+    response = RedirectResponse(url=url)
+    return response
+
+@app.get("/google/verify_token")
+def verify_token(request: Request):
+    """
+    Veriy that google token is still valid
+    """
+    url = os.getenv("GOOGLE_AUTH_URL") + "/auth/verify"
+    response = requests.get(url, headers=request.headers)
+
+    return {
+        "login_type": "google",
+        **response.json()
+    }
+
+@app.post("/google/logout")
+def google_logout():
+    """
+    Logout from google authentication
+    """
+    url = os.getenv("GOOGLE_REDIRECT_URL") + "/auth/logout"
+    logout_response = RedirectResponse(url=url)
+
+    return logout_response

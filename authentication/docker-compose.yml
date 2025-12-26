@@ -1,6 +1,46 @@
 version: "3.9"
 
 services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: myapp
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - default
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  google:
+    build: ./google
+    container_name: google-auth
+    env_file:
+      - ./google/.env
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./google:/app
+    environment:
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/myapp?authSource=admin
+      - DB_NAME=myapp
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - default
+
   adapter:
     build: ./adapter
     container_name: adapter
@@ -45,3 +85,7 @@ services:
 networks:
   default:
     driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
