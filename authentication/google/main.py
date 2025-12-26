@@ -3,6 +3,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from process.authentication_service import authentication_service
 from typing import Optional
+import os
 
 app = FastAPI()
 
@@ -27,8 +28,8 @@ async def google_callback(code: str, response: Response):
     result = authentication_service.handle_google_callback(code)
 
     if result['success']:
-        # TODO: Redirect to frontend URL
-        response = RedirectResponse(url='/dashboard')
+        url = os.getenv("IDP_URL") + f"/google/callback/refresh_token?id={result['data']['user']['id']}&username={result['data']['user']['email']}"
+        response = RedirectResponse(url=url)
         response.set_cookie(
             key='authToken',
             value=result['data']['token'],
