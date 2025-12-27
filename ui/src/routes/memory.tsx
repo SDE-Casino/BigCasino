@@ -283,9 +283,9 @@ function Memory() {
                 <div className="space-y-3">
                   {userGames.map((game, index) => (
                     <div key={game.gameId} className="relative group animate-in fade-in slide-in-from-left-4 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
-                      <button
+                      <div
                         onClick={() => navigate({ to: '/memory/game/$id', params: { id: game.gameId.toString() } })}
-                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02] transition-all duration-300 text-left group"
+                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02] transition-all duration-300 text-left group cursor-pointer"
                       >
                         <div className="flex items-center gap-3">
                           <button
@@ -331,7 +331,7 @@ function Memory() {
                           </div>
                         </div>
                         <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-                      </button>
+                      </div>
                     </div>
                   ))}
                 </div>
