@@ -1,23 +1,40 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { Gamepad2, Dices } from 'lucide-react'
+import { useEffect } from 'react'
 
 export const Route = createFileRoute('/')({
   component: App,
 })
 
 function App() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
+  const navigate = useNavigate()
+
+  // Handle redirect in useEffect to avoid render issues
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate({ to: '/auth', replace: true })
+    }
+  }, [isLoading, isAuthenticated, navigate])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
-    throw redirect({ to: '/auth' })
+    return null // Will redirect via useEffect
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-12 text-gray-800">
-          Welcome to Big Casino
+          Welcome to Big Casino, {user?.username}!
         </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Link

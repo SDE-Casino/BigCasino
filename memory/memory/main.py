@@ -20,7 +20,7 @@ MEMORY_LOGIC_URL = "http://memory_logic:8000"
 
 # Pydantic models to match memory_logic
 class CreateGameRequest(BaseModel):
-    userId: int
+    userId: str  # Changed to UUID string
     size: int
 
 class FlipCardRequest(BaseModel):
@@ -134,7 +134,7 @@ async def get_game_status(game_id: int):
         )
 
 @app.get("/user_games/{user_id}")
-async def get_user_games(user_id: int):
+async def get_user_games(user_id: str):  # Changed to UUID string
     """
     Forwards user_games request to memory_logic service
     """

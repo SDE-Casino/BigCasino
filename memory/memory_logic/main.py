@@ -9,7 +9,7 @@ app = FastAPI(title="Memory Logic Service", description="A simple FastAPI servic
 
 # Pydantic models for request/response
 class CreateGameRequest(BaseModel):
-    userId: int
+    userId: str  # Changed to UUID string
     size: int
 
 class CardResponse(BaseModel):
@@ -358,7 +358,7 @@ async def get_game_status(game_id: int):
         )
 
 @app.get("/user_games/{user_id}")
-async def get_user_games(user_id: int):
+async def get_user_games(user_id: str):  # Changed to UUID string
     """
     Returns all games for a specific user with their cards categorized by player.
     Calls memory_adapter's /users/{user_id}/games endpoint.

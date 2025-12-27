@@ -2,11 +2,13 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, DateTime, func, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.dialects.postgresql import UUID
 import os
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 from enum import Enum
+import uuid
 
 # Winner enum
 class Winner(str, Enum):
@@ -26,8 +28,8 @@ class Game(Base):
     __tablename__ = "games"
     
     id = Column(Integer, primary_key=True, index=True)
-    userId = Column(Integer, nullable=False)
-    size = Column(Integer, nullable=False)  # Size of the game (number of pairs)
+    userId = Column(UUID(as_uuid=False), nullable=False)  # Changed to UUID
+    size = Column(Integer, nullable=False)  # Size of game (number of pairs)
     winner = Column(String, nullable=True)  # Stores enum string values: "none", "draw", "player1", "player2"
     currentTurn = Column(Boolean, nullable=False)
     
@@ -62,7 +64,7 @@ async def startup_event():
 
 # Pydantic models for requests
 class GameCreate(BaseModel):
-    userId: int
+    userId: str  # Changed to UUID string
     size: int
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: bool = True
@@ -81,7 +83,7 @@ class MoveCardsRequest(BaseModel):
     gameId: int
 
 class GameUpdate(BaseModel):
-    userId: Optional[int] = None
+    userId: Optional[str] = None  # Changed to UUID string
     size: Optional[int] = None
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: Optional[bool] = None
@@ -401,7 +403,7 @@ def move_cards_to_player(request: MoveCardsRequest):
         ).all()
         print(f"DEBUG: Found {len(cards)} cards to move")
         for card in cards:
-            print(f"DEBUG: Card id={card.id}, kindId={card.kindId}, gameId={card.gameId}, ownedBy before={card.ownedBy}")
+            print(f"DEBUG: Card id={card.id}, kindId={card.kindId}, gameId={request.gameId}, ownedBy before={card.ownedBy}")
         
         if not cards:
             return {"message": "No cards found with specified kindId on the table", "cards": []}
@@ -424,7 +426,7 @@ def move_cards_to_player(request: MoveCardsRequest):
 
 # Endpoint to get all games for a specific user
 @app.get("/users/{user_id}/games")
-def get_user_games(user_id: int):
+def get_user_games(user_id: str):  # Changed to UUID string
     """
     Returns all games for a specific user with their cards categorized by player.
     Response includes gameId, winner, player1Cards, and player2Cards for each game.
