@@ -16,6 +16,27 @@ services:
       timeout: 5s
       retries: 5
 
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: myapp
+    volumes:
+      - mongodb_data:/data/db
+      - ./authentication/.mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - default
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   image_adapter:
     build:
       context: ./memory/image_adapter
@@ -71,6 +92,18 @@ services:
       - "8005:8000"
     restart: unless-stopped
 
+  solitaire_process_centric:
+    build:
+      context: ./solitaire/process_centric
+      dockerfile: Dockerfile
+    container_name: solitaire-process-centric
+    ports:
+      - "8010:8000"
+    depends_on:
+      - solitaire_logic
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
   ui:
     build:
       context: ./ui
@@ -84,5 +117,62 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8000
 
+  google_auth:
+    build:
+      context: ./authentication/google
+      dockerfile: Dockerfile
+    container_name: google-auth
+    env_file:
+      - ./authentication/google/.env
+    ports:
+      - "8006:8000"
+    environment:
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/myapp?authSource=admin
+      - DB_NAME=myapp
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  auth_adapter:
+    build:
+      context: ./authentication/adapter
+      dockerfile: Dockerfile
+    container_name: auth-adapter
+    ports:
+      - "8007:8000"
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  auth_logic:
+    build:
+      context: ./authentication/logic
+      dockerfile: Dockerfile
+    container_name: auth-logic
+    env_file:
+      - ./authentication/logic/.env
+    ports:
+      - "8008:8000"
+    depends_on:
+      - auth_adapter
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  auth_process_centric:
+    build:
+      context: ./authentication/process-centric
+      dockerfile: Dockerfile
+    container_name: authenticator
+    env_file:
+      - ./authentication/process-centric/.env
+    ports:
+      - "8009:8000"
+    depends_on:
+      - auth_logic
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
 volumes:
   memory_db_data:
+  mongodb_data:
