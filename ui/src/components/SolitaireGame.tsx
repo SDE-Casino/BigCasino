@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Trophy, RotateCcw, ArrowLeft, RefreshCw, Sparkles, XCircle, AlertCircle } from 'lucide-react'
+import { authService } from '../services/auth'
 
-const SOLITAIRE_SERVICE_URL = 'http://localhost:8005'
+const SOLITAIRE_SERVICE_URL = 'http://localhost:8010'
 
 // Toast notification component
 interface ToastProps {
@@ -240,13 +241,32 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
   const handleNewGame = async () => {
     setIsProcessing(true)
     try {
+      const token = authService.getAccessToken()
+      console.log('Creating game with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/create_game`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       })
-      console.log(response)
-      if (!response.ok) throw new Error('Failed to create game')
+
+      console.log('Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error response:', errorData)
+        throw new Error(errorData.detail || 'Failed to create game')
+      }
+
       const data = await response.json()
+      console.log('Game created:', data)
 
       // Preload card images
       await preloadCardImages(data.game_state)
@@ -271,11 +291,28 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     setIsProcessing(true)
     try {
       console.log('Drawing cards. Current talon before:', gameState?.talon)
+      const token = authService.getAccessToken()
+      console.log('Draw cards with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/draw_cards/${gameId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       })
-      if (!response.ok) throw new Error('Failed to draw cards')
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error response:', errorData)
+        throw new Error(errorData.detail || 'Failed to draw cards')
+      }
+
       const data = await response.json()
       console.log('Draw cards response:', data)
       console.log('New talon after draw:', data.game_state.talon)
@@ -297,11 +334,28 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     if (isProcessing) return
     setIsProcessing(true)
     try {
+      const token = authService.getAccessToken()
+      console.log('Reset stock with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/reset_stock/${gameId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       })
-      if (!response.ok) throw new Error('Failed to reset stock')
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error response:', errorData)
+        throw new Error(errorData.detail || 'Failed to reset stock')
+      }
+
       const data = await response.json()
       setGameState(data.game_state)
       // Clear selected card when resetting stock, as the talon has changed
@@ -393,14 +447,26 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         return
       }
 
+      const token = authService.getAccessToken()
+      console.log('Move card with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/move_card/${gameId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('Error response:', errorData)
         throw new Error(errorData.detail || 'Failed to move card')
       }
 
@@ -446,14 +512,26 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         return
       }
 
+      const token = authService.getAccessToken()
+      console.log('Move to foundation with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/move_card/${gameId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('Error response:', errorData)
         throw new Error(errorData.detail || 'Failed to move card')
       }
 
@@ -503,14 +581,26 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         return
       }
 
+      const token = authService.getAccessToken()
+      console.log('Move to empty tableau with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/move_card/${gameId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('Error response:', errorData)
         throw new Error(errorData.detail || 'Failed to move card')
       }
 

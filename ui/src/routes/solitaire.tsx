@@ -2,8 +2,9 @@ import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@ta
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Play, Gamepad2, RotateCcw, ArrowRight } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { authService } from '../services/auth'
 
-const SOLITAIRE_SERVICE_URL = 'http://localhost:8005'
+const SOLITAIRE_SERVICE_URL = 'http://localhost:8010'
 
 // Store game states in window object for access across routes
 // @ts-ignore
@@ -30,13 +31,33 @@ function Solitaire() {
   const handleNewGame = async () => {
     setIsCreatingGame(true)
     try {
+      const token = authService.getAccessToken()
+      console.log('Creating game with token:', token ? 'Token exists' : 'No token found')
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${SOLITAIRE_SERVICE_URL}/create_game`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       })
-      console.log(response)
-      if (!response.ok) throw new Error('Failed to create game')
+
+      console.log('Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error response:', errorData)
+        throw new Error(errorData.detail || 'Failed to create game')
+      }
+
       const data = await response.json()
+      console.log('Game created:', data)
+
         // Store game state in window object for later use
         ; (window as any).__solitaireGameStates[data.game_id] = data.game_state
       navigate({ to: '/solitaire/game/$id', params: { id: data.game_id } })
@@ -186,3 +207,4 @@ function Solitaire() {
     </div>
   )
 }
+

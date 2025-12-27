@@ -2,10 +2,13 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Request
 from typing import Union
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 import uuid
 import requests
 import jwt
 import os
+
+load_dotenv()
 
 
 class MoveCardInsideTableauRequest(BaseModel):
@@ -53,7 +56,7 @@ def create_game(request: Request):
     jwt_token = jwt_token.replace("Bearer ", "")
 
     try:
-        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=os.getenv("JWT_ALGORITHM"))
+        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
@@ -79,7 +82,7 @@ def draw_cards(request: Request, game_id: str):
     jwt_token = jwt_token.replace("Bearer ", "")
 
     try:
-        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=os.getenv("JWT_ALGORITHM"))
+        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
@@ -105,7 +108,7 @@ def reset_stock(request: Request, game_id: str):
     jwt_token = jwt_token.replace("Bearer ", "")
 
     try:
-        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=os.getenv("JWT_ALGORITHM"))
+        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
@@ -141,7 +144,7 @@ def move_card(request: Request, game_id: str, body: MoveCardRequest):
     jwt_token = jwt_token.replace("Bearer ", "")
 
     try:
-        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=os.getenv("JWT_ALGORITHM"))
+        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:

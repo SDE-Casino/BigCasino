@@ -90,6 +90,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8005:8000"
+    environment:
+      - DECK_ADAPTER_URL=http://deck_adapter:8000
     restart: unless-stopped
 
   solitaire_process_centric:
@@ -97,6 +99,8 @@ services:
       context: ./solitaire/process_centric
       dockerfile: Dockerfile
     container_name: solitaire-process-centric
+    env_file:
+      - ./solitaire/process_centric/.env
     ports:
       - "8010:8000"
     depends_on:
