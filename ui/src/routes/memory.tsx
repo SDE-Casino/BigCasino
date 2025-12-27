@@ -2,6 +2,7 @@ import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@ta
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Clock, Gamepad2, Trophy, Play, User, ChevronRight, Trash2, AlertTriangle } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { authService } from '../services/auth'
 
 const MEMORY_SERVICE_URL = 'http://localhost:8003'
 
@@ -75,7 +76,18 @@ function Memory() {
   useEffect(() => {
     const fetchUserGames = async () => {
       try {
-        const response = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`)
+        const token = authService.getAccessToken()
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        }
+
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
+        const response = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`, {
+          headers,
+        })
         if (!response.ok) throw new Error('Failed to fetch games')
         const data: UserGamesResponse = await response.json()
         setUserGames(data.games)
@@ -109,9 +121,18 @@ function Memory() {
     setShowSizePopup(false)
     setIsCreatingGame(true)
     try {
+      const token = authService.getAccessToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${MEMORY_SERVICE_URL}/create_game`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userId: user?.id || 1, size }),
       })
       if (!response.ok) throw new Error('Failed to create game')
@@ -133,13 +154,25 @@ function Memory() {
     if (gameToDelete === null) return
 
     try {
+      const token = authService.getAccessToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${MEMORY_SERVICE_URL}/delete_game/${gameToDelete}`, {
         method: 'DELETE',
+        headers,
       })
       if (!response.ok) throw new Error('Failed to delete game')
 
-      // Refresh the games list
-      const gamesResponse = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`)
+      // Refresh games list
+      const gamesResponse = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`, {
+        headers,
+      })
       if (!gamesResponse.ok) throw new Error('Failed to fetch games')
       const data: UserGamesResponse = await gamesResponse.json()
       setUserGames(data.games)

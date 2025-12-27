@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from '@tanstack/react-router'
 import { Trophy, RotateCcw, Clock, User, ArrowLeft, Sparkles } from 'lucide-react'
+import { authService } from '../services/auth'
 
 // Confetti component
 function Confetti({ active }: { active: boolean }) {
@@ -98,7 +99,18 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
             setLoading(true)
             setError(null)
 
-            const response = await fetch(`${MEMORY_SERVICE_URL}/game_status/${gameId}`)
+            const token = authService.getAccessToken()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            }
+
+            const response = await fetch(`${MEMORY_SERVICE_URL}/game_status/${gameId}`, {
+                headers,
+            })
             if (!response.ok) throw new Error('Failed to load game')
             const data = await response.json()
             setGameState(data)
@@ -127,9 +139,18 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
             setLoading(true)
             setError(null)
 
+            const token = authService.getAccessToken()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            }
+
             const response = await fetch(`${MEMORY_SERVICE_URL}/create_game`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ userId: user?.id || 1, size }),
             })
             if (!response.ok) throw new Error('Failed to create game')
@@ -150,9 +171,18 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
         if (isWaiting || !gameState) return
 
         try {
+            const token = authService.getAccessToken()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            }
+
             const response = await fetch(`${MEMORY_SERVICE_URL}/flip_card`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ game_id: gameState.game.id, local_id: localId }),
             })
             if (!response.ok) throw new Error('Failed to flip card')
@@ -176,7 +206,18 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
         if (!gameState) return
 
         try {
-            const response = await fetch(`${MEMORY_SERVICE_URL}/game_status/${gameState.game.id}`)
+            const token = authService.getAccessToken()
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            }
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            }
+
+            const response = await fetch(`${MEMORY_SERVICE_URL}/game_status/${gameState.game.id}`, {
+                headers,
+            })
             if (!response.ok) throw new Error('Failed to get game state')
             const data = await response.json()
             setGameState(data)

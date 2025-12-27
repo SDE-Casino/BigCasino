@@ -70,11 +70,15 @@ services:
     build:
       context: ./memory/memory
       dockerfile: Dockerfile
+    container_name: memory
+    env_file:
+      - ./memory/memory/.env
     ports:
       - "8003:8000"
     restart: unless-stopped
     depends_on:
       - memory_logic
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   deck_adapter:
     build:

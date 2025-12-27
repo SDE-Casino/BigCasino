@@ -1,8 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 from typing import Optional
+import jwt
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="Memory Service", description="A proxy service that forwards requests to memory_logic")
 
@@ -17,6 +22,24 @@ app.add_middleware(
 
 # Service URL
 MEMORY_LOGIC_URL = "http://memory_logic:8000"
+
+# JWT verification function
+def verify_jwt_token(request: Request):
+    """
+    Verify JWT token from Authorization header
+    """
+    jwt_token = request.headers.get("Authorization")
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Authorization token missing")
+
+    jwt_token = jwt_token.replace("Bearer ", "")
+
+    try:
+        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Pydantic models to match memory_logic
 class CreateGameRequest(BaseModel):
@@ -44,15 +67,16 @@ async def health_check():
         return {"status": "unhealthy", "memory_logic": "disconnected", "error": str(e)}
 
 @app.post("/create_game")
-async def create_game(request: CreateGameRequest):
+async def create_game(request: Request, create_request: CreateGameRequest):
     """
     Forwards create_game request to memory_logic service
     """
+    verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 f"{MEMORY_LOGIC_URL}/create_game",
-                json=request.model_dump()
+                json=create_request.model_dump()
             )
             
             if response.status_code != 200:
@@ -75,15 +99,16 @@ async def create_game(request: CreateGameRequest):
         )
 
 @app.post("/flip_card")
-async def flip_card(request: FlipCardRequest):
+async def flip_card(request: Request, flip_request: FlipCardRequest):
     """
     Forwards flip_card request to memory_logic service
     """
+    verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 f"{MEMORY_LOGIC_URL}/flip_card",
-                json=request.model_dump()
+                json=flip_request.model_dump()
             )
             
             if response.status_code != 200:
@@ -106,10 +131,11 @@ async def flip_card(request: FlipCardRequest):
         )
 
 @app.get("/game_status/{game_id}")
-async def get_game_status(game_id: int):
+async def get_game_status(request: Request, game_id: int):
     """
     Forwards game_status request to memory_logic service
     """
+    verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(f"{MEMORY_LOGIC_URL}/game_status/{game_id}")
@@ -134,10 +160,11 @@ async def get_game_status(game_id: int):
         )
 
 @app.get("/user_games/{user_id}")
-async def get_user_games(user_id: str):  # Changed to UUID string
+async def get_user_games(request: Request, user_id: str):  # Changed to UUID string
     """
     Forwards user_games request to memory_logic service
     """
+    verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(f"{MEMORY_LOGIC_URL}/user_games/{user_id}")
@@ -162,10 +189,11 @@ async def get_user_games(user_id: str):  # Changed to UUID string
         )
 
 @app.delete("/delete_game/{game_id}")
-async def delete_game(game_id: int):
+async def delete_game(request: Request, game_id: int):
     """
     Forwards delete_game request to memory_logic service
     """
+    verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.delete(f"{MEMORY_LOGIC_URL}/delete_game/{game_id}")
