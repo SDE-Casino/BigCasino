@@ -1,12 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { authService } from '../services/auth'
-import type { UserCredentials } from '../types/auth'
-
-interface User {
-  id: string  // Changed to UUID string
-  username: string
-}
+import type { UserCredentials, User } from '../types/auth'
 
 interface AuthContextType {
   user: User | null
@@ -16,6 +11,7 @@ interface AuthContextType {
   register: (credentials: UserCredentials) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
+  loginWithGoogle: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -119,6 +115,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const loginWithGoogle = useCallback(async () => {
+    try {
+      const response = await authService.handleGoogleCallback()
+      setUser({
+        id: response.id,
+        username: response.username,
+        provider: 'google' as const
+      })
+    } catch (error) {
+      setUser(null)
+      throw error
+    }
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
@@ -129,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refresh,
+        loginWithGoogle,
       }}
     >
       {children}

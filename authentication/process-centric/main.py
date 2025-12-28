@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import requests
 import os
 import jwt
+import uuid as uuid_lib
 
 load_dotenv()
 
@@ -52,6 +53,31 @@ def logic_post(path: str, json: dict):
     return response
 
 
+def mongo_id_to_uuid(mongo_id: str) -> str:
+    """
+    Convert MongoDB ObjectId hex string to UUID format.
+    MongoDB ObjectId is 24 hex chars, UUID is 32 hex chars with hyphens.
+    We'll pad the ObjectId to 32 chars and format as UUID.
+    """
+    # Remove any hyphens if present
+    clean_id = mongo_id.replace('-', '')
+    
+    # If it's already 24 chars (ObjectId), pad to 32 chars
+    if len(clean_id) == 24:
+        # Pad with zeros to make it 32 chars (UUID length)
+        padded_id = clean_id + '00000000'
+    elif len(clean_id) == 32:
+        padded_id = clean_id
+    else:
+        # Fallback: just use as-is if unexpected length
+        padded_id = clean_id
+    
+    # Format as UUID: 8-4-4-4-12
+    uuid_str = f"{padded_id[0:8]}-{padded_id[8:12]}-{padded_id[12:16]}-{padded_id[16:20]}-{padded_id[20:32]}"
+    
+    return uuid_str
+
+
 # =====================
 # LOCAL AUTH
 # =====================
@@ -70,10 +96,17 @@ def register(credentials: UserCredentials, response: Response):
         )
 
     data = logic_response.json()
+    
+    # Ensure user ID is in UUID format (logic layer should already return UUIDs)
+    user_id = data["id"]
+    if len(user_id.replace('-', '')) == 24:
+        # It's a MongoDB ObjectId, convert to UUID
+        user_id = mongo_id_to_uuid(user_id)
+        print(f"[PROCESS-CENTRIC] Converted MongoDB ID to UUID: {user_id}")  # DEBUG LOG
 
     access_token = create_jwt(
         {
-            "sub": data["id"],
+            "sub": user_id,
             "type": "access",
             "provider": "local"
         },
@@ -82,7 +115,7 @@ def register(credentials: UserCredentials, response: Response):
 
     refresh_token = create_jwt(
         {
-            "sub": data["id"],
+            "sub": user_id,
             "type": "refresh",
             "provider": "local"
         },
@@ -99,7 +132,7 @@ def register(credentials: UserCredentials, response: Response):
     )
 
     return {
-        "id": data["id"],
+        "id": user_id,
         "username": data["username"],
         "access_token": access_token
     }
@@ -118,10 +151,17 @@ def login(credentials: UserCredentials, response: Response):
         )
 
     data = logic_response.json()
+    
+    # Ensure user ID is in UUID format (logic layer should already return UUIDs)
+    user_id = data["id"]
+    if len(user_id.replace('-', '')) == 24:
+        # It's a MongoDB ObjectId, convert to UUID
+        user_id = mongo_id_to_uuid(user_id)
+        print(f"[PROCESS-CENTRIC] Converted MongoDB ID to UUID: {user_id}")  # DEBUG LOG
 
     access_token = create_jwt(
         {
-            "sub": data["id"],
+            "sub": user_id,
             "type": "access",
             "provider": "local"
         },
@@ -130,7 +170,7 @@ def login(credentials: UserCredentials, response: Response):
 
     refresh_token = create_jwt(
         {
-            "sub": data["id"],
+            "sub": user_id,
             "type": "refresh",
             "provider": "local"
         },
@@ -147,7 +187,7 @@ def login(credentials: UserCredentials, response: Response):
     )
 
     return {
-        "id": data["id"],
+        "id": user_id,
         "username": data["username"],
         "access_token": access_token
     }
@@ -156,7 +196,7 @@ def login(credentials: UserCredentials, response: Response):
 @app.post("/refresh")
 def refresh(request: Request):
     """
-    Provide a new access token for the user
+    Provide a new access token for the user (supports both local and Google providers)
     """
     token = request.cookies.get("refresh_token")
     if not token:
@@ -171,14 +211,19 @@ def refresh(request: Request):
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
-    if payload.get("type") != "refresh" or payload.get("provider") != "local":
+    if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
+    provider = payload.get("provider", "local")
+    user_id = payload["sub"]
+    
+    print(f"[PROCESS-CENTRIC] Refresh token for user_id: {user_id}, provider: {provider}")  # DEBUG LOG
+    
     new_access = create_jwt(
         {
-            "sub": payload["sub"],
+            "sub": user_id,  # Already in UUID format from original token
             "type": "access",
-            "provider": "local"
+            "provider": provider
         },
         minutes=int(os.getenv("ACCESS_TOKEN_MINUTES"))
     )
@@ -206,19 +251,29 @@ def logout(response: Response):
 def google_login():
     """
     Redirect to google service for authentication
+    Use external URL for browser redirect
     """
-    url = f"{os.getenv('GOOGLE_REDIRECT_URL')}/auth/google"
+    url = f"{os.getenv('GOOGLE_AUTH_EXTERNAL_URL') or os.getenv('GOOGLE_REDIRECT_URL')}/auth/google"
     return RedirectResponse(url=url)
 
 @app.get("/google/callback/refresh_token")
 def google_refresh_token(request: Request, response: Response):
     """
     After google service manages authentication, it calls this to provide a refresh token
+    and redirects back to the UI
     """
     data = request.query_params
+    mongo_user_id = data.get("id")
+    
+    print(f"[PROCESS-CENTRIC] Google callback - mongo_user_id: {mongo_user_id}")  # DEBUG LOG
+    
+    # Convert MongoDB ObjectId to UUID format for PostgreSQL compatibility
+    user_id = mongo_id_to_uuid(mongo_user_id)
+    print(f"[PROCESS-CENTRIC] Converted to UUID: {user_id}")  # DEBUG LOG
+    
     access_token = create_jwt(
         {
-            "sub": data["id"],
+            "sub": user_id,
             "type": "access",
             "provider": "google"
         },
@@ -227,7 +282,7 @@ def google_refresh_token(request: Request, response: Response):
 
     refresh_token = create_jwt(
         {
-            "sub": data["id"],
+            "sub": user_id,
             "type": "refresh",
             "provider": "google"
         },
@@ -243,17 +298,17 @@ def google_refresh_token(request: Request, response: Response):
         path="/refresh"
     )
 
-    return {
-        "id": data["id"],
-        "username": data["username"],
-        "access_token": access_token
-    }
+    # Redirect to UI with Google auth indicator
+    ui_url = os.getenv("UI_REDIRECT_URL", "http://localhost:3000/auth")
+    redirect_url = f"{ui_url}?google_auth=true"
+    return RedirectResponse(url=redirect_url)
 
 
 @app.get("/google/verify_token")
 def verify_google_token(request: Request):
     """
     Verify google token, retrieve user info from google service
+    Generate and return a JWT access token for UI to use with other services
     """
     url = f"{os.getenv('GOOGLE_AUTH_URL')}/auth/verify"
 
@@ -265,7 +320,13 @@ def verify_google_token(request: Request):
     if auth_cookie:
         headers["cookie"] = f"authToken={auth_cookie}"
 
+    print(f"[PROCESS-CENTRIC] Calling Google verify at: {url}")  # DEBUG LOG
+    print(f"[PROCESS-CENTRIC] Headers sent: {headers}")  # DEBUG LOG
+    
     google_response = requests.get(url, headers=headers)
+
+    print(f"[PROCESS-CENTRIC] Google response status: {google_response.status_code}")  # DEBUG LOG
+    print(f"[PROCESS-CENTRIC] Google response body: {google_response.text}")  # DEBUG LOG
 
     if google_response.status_code != 200:
         raise HTTPException(
@@ -273,10 +334,49 @@ def verify_google_token(request: Request):
             detail="Invalid Google token"
         )
 
-    return {
-        "login_type": "google",
-        **google_response.json()
+    google_data = google_response.json()
+    
+    print(f"[PROCESS-CENTRIC] Google response data: {google_data}")  # DEBUG LOG
+    
+    # Extract user ID from Google response
+    # The Google service returns a JWT payload with 'user_id' and 'email'
+    mongo_user_id = google_data.get("user_id") or google_data.get("id") or google_data.get("user", {}).get("id")
+    username = google_data.get("email") or google_data.get("username") or google_data.get("user", {}).get("email")
+    
+    if not mongo_user_id:
+        print(f"[PROCESS-CENTRIC] ERROR: No user ID found in Google response: {google_data}")  # DEBUG LOG
+        raise HTTPException(status_code=500, detail="User ID not found in Google response")
+    
+    print(f"[PROCESS-CENTRIC] Extracted mongo_user_id: {mongo_user_id}, username: {username}")  # DEBUG LOG
+    
+    # Convert MongoDB ObjectId to UUID format for PostgreSQL compatibility
+    user_id = mongo_id_to_uuid(mongo_user_id)
+    print(f"[PROCESS-CENTRIC] Converted to UUID: {user_id}")  # DEBUG LOG
+    
+    # Generate JWT access token (same as local auth)
+    # Use the converted UUID (user_id) not the original MongoDB ID (mongo_user_id)
+    access_token = create_jwt(
+        {
+            "sub": user_id,  # Use UUID format
+            "type": "access",
+            "provider": "google"
+        },
+        minutes=int(os.getenv("ACCESS_TOKEN_MINUTES"))
+    )
+    
+    print(f"[PROCESS-CENTRIC] Generated JWT access token with sub={user_id}")  # DEBUG LOG
+    
+    response_data = {
+        "id": user_id,  # Return UUID format
+        "username": username,
+        "access_token": access_token,
+        "login_type": "google"
     }
+    
+    print(f"[PROCESS-CENTRIC] Returning to UI: {response_data}")  # DEBUG LOG
+    print(f"[PROCESS-CENTRIC] Has access_token? {'access_token' in response_data}")  # DEBUG LOG
+    
+    return response_data
 
 
 @app.post("/google/logout")

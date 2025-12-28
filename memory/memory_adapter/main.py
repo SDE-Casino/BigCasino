@@ -296,7 +296,7 @@ def get_cards_for_game(game_id: int):
 def get_game_state(game_id: int):
     db = SessionLocal()
     try:
-        # Get the game
+        # Get game
         game = db.query(Game).filter(Game.id == game_id).first()
         if game is None:
             return {"error": "Game not found"}, 404
@@ -359,7 +359,7 @@ def flip_card(card_id: int):
             return {"error": "Card not found"}, 404
         
         print(f"DEBUG flip_card: cardId={card_id}, flipped before={card.flipped}, ownedBy={card.ownedBy}")
-        # Flip the card's flipped status
+        # Flip card's flipped status
         card.flipped = not card.flipped
         print(f"DEBUG flip_card: flipped after={card.flipped}")
             
@@ -379,7 +379,7 @@ def change_turn(game_id: int):
             return {"error": "Game not found"}, 404
         
         print(f"DEBUG change_turn: gameId={game_id}, currentTurn before={game.currentTurn}")
-        # Toggle the currentTurn
+        # Toggle currentTurn
         game.currentTurn = not game.currentTurn
         print(f"DEBUG change_turn: currentTurn after={game.currentTurn}")
         
@@ -433,8 +433,12 @@ def get_user_games(user_id: str):  # Changed to UUID string
     """
     db = SessionLocal()
     try:
-        # Get all games for the user
+        print(f"[MEMORY ADAPTER] Getting games for user_id: {user_id}")  # DEBUG LOG
+        print(f"[MEMORY ADAPTER] user_id length: {len(user_id)}")  # DEBUG LOG
+        
+        # Get all games for user
         games = db.query(Game).filter(Game.userId == user_id).all()
+        print(f"[MEMORY ADAPTER] Found {len(games)} games")  # DEBUG LOG
         
         result = {
             "games": []

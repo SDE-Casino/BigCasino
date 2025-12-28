@@ -55,11 +55,18 @@ def create_game(request: Request):
 
     jwt_token = jwt_token.replace("Bearer ", "")
 
+    print(f"[SOLITAIRE SERVICE] Verifying token: {jwt_token[:50]}...")  # DEBUG LOG
+    print(f"[SOLITAIRE SERVICE] JWT_SECRET_KEY: {os.getenv('JWT_SECRET_KEY')[:20]}...")  # DEBUG LOG
+    print(f"[SOLITAIRE SERVICE] JWT_ALGORITHM: {os.getenv('JWT_ALGORITHM')}")  # DEBUG LOG
+
     try:
-        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
-    except jwt.ExpiredSignatureError:
+        decoded = jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
+        print(f"[SOLITAIRE SERVICE] Token decoded successfully: {decoded}")  # DEBUG LOG
+    except jwt.ExpiredSignatureError as e:
+        print(f"[SOLITAIRE SERVICE] Token expired error: {e}")  # DEBUG LOG
         raise HTTPException(status_code=401, detail="Token has expired")
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        print(f"[SOLITAIRE SERVICE] Invalid token error: {e}")  # DEBUG LOG
         raise HTTPException(status_code=401, detail="Invalid token")
 
     url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/create_game"

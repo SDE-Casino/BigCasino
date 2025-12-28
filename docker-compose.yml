@@ -85,7 +85,7 @@ services:
       context: ./solitaire/deck_adapter
       dockerfile: Dockerfile
     ports:
-      - "8004:8000"
+      - "8006:8000"
     restart: unless-stopped
 
   solitaire_logic:
@@ -133,7 +133,7 @@ services:
     env_file:
       - ./authentication/google/.env
     ports:
-      - "8006:8000"
+      - "8004:8000"
     environment:
       - MONGODB_URI=mongodb://admin:password123@mongodb:27017/myapp?authSource=admin
       - DB_NAME=myapp

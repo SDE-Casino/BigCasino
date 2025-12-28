@@ -1,6 +1,12 @@
+export enum AuthProvider {
+  LOCAL = 'local',
+  GOOGLE = 'google'
+}
+
 export interface User {
   id: string  // Changed to UUID string
   username: string
+  provider?: AuthProvider
 }
 
 export interface UserCredentials {
@@ -10,6 +16,12 @@ export interface UserCredentials {
 
 export interface AuthResponse {
   id: string  // Changed to UUID string
+  username: string
+  access_token: string
+}
+
+export interface GoogleAuthResponse {
+  id: string
   username: string
   access_token: string
 }
