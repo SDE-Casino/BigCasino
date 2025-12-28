@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from '@tanstack/react-router'
-import { Trophy, RotateCcw, Clock, User, ArrowLeft, Sparkles } from 'lucide-react'
+import { Trophy, RotateCcw, Clock, User, ArrowLeft } from 'lucide-react'
 import { authService } from '../services/auth'
 
 // Confetti component
