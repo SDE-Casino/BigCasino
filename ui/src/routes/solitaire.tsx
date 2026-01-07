@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
-import { Plus, Play, Gamepad2, RotateCcw } from 'lucide-react'
+import { Plus, Play, Gamepad2, RotateCcw, Trophy } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { authService } from '../services/auth'
 
@@ -9,6 +9,12 @@ const SOLITAIRE_SERVICE_URL = 'http://localhost:8010'
 // @ts-ignore
 if (!(window as any).__solitaireGameStates) {
   ; (window as any).__solitaireGameStates = {}
+}
+
+interface LeaderboardEntry {
+  user_id: string
+  played_games: number
+  games_won: number
 }
 
 export const Route = createFileRoute('/solitaire')({
@@ -31,8 +37,42 @@ function Solitaire() {
   const location = useLocation()
   const navigate = useNavigate()
   const [isCreatingGame, setIsCreatingGame] = useState(false)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false)
 
   const isGameRoute = location.pathname.startsWith('/solitaire/game/')
+
+  useEffect(() => {
+    if (!isGameRoute) {
+      fetchLeaderboard()
+    }
+  }, [isGameRoute])
+
+  const fetchLeaderboard = async () => {
+    setIsLoadingLeaderboard(true)
+    try {
+      const token = authService.getAccessToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`${SOLITAIRE_SERVICE_URL}/leaderboard`, {
+        headers
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setLeaderboard(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error)
+    } finally {
+      setIsLoadingLeaderboard(false)
+    }
+  }
 
   const handleNewGame = async () => {
     setIsCreatingGame(true)
@@ -162,7 +202,7 @@ function Solitaire() {
             </div>
 
             {/* Game Tips */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 hover:shadow-md transition-shadow duration-300">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 hover:shadow-md transition-shadow duration-300">
               <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                 <RotateCcw size={20} className="text-blue-500" />
                 Tips & Strategy
@@ -185,6 +225,64 @@ function Solitaire() {
                   <p className="text-slate-500 text-sm">Look for moves that create opportunities for future plays.</p>
                 </div>
               </div>
+            </div>
+
+            {/* Leaderboard */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400 hover:shadow-md transition-shadow duration-300 mb-8">
+              <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
+                <Trophy size={20} className="text-yellow-500" />
+                Leaderboard
+              </h2>
+
+              {isLoadingLeaderboard ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                </div>
+              ) : leaderboard.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-medium">
+                      <tr>
+                        <th className="px-4 py-3 rounded-l-lg">User</th>
+                        <th className="px-4 py-3">Games Played</th>
+                        <th className="px-4 py-3">Games Won</th>
+                        <th className="px-4 py-3 rounded-r-lg">Win Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {leaderboard
+                        .sort((a, b) => b.games_won - a.games_won)
+                        .slice(0, 10)
+                        .map((entry) => {
+                          const winRate = entry.played_games > 0
+                            ? Math.round((entry.games_won / entry.played_games) * 100)
+                            : 0;
+                          const isCurrentUser = authService.getUser()?.id === entry.user_id;
+
+                          return (
+                            <tr key={entry.user_id} className={`hover:bg-slate-50 transition-colors ${isCurrentUser ? 'bg-blue-50/50' : ''}`}>
+                              <td className="px-4 py-3 font-medium text-slate-900">
+                                {isCurrentUser ? `${entry.user_id} (You)` : entry.user_id}
+                              </td>
+                              <td className="px-4 py-3 text-slate-600">{entry.played_games}</td>
+                              <td className="px-4 py-3 text-slate-600">{entry.games_won}</td>
+                              <td className="px-4 py-3 text-slate-600">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${winRate >= 50 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                  }`}>
+                                  {winRate}%
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  No games played yet. Be the first to top the leaderboard!
+                </div>
+              )}
             </div>
           </>
         )}
