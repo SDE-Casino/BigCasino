@@ -1,4 +1,5 @@
 services:
+  # PostgresQL database for the Memory service
   memory_db:
     image: postgres:15
     environment:
@@ -16,6 +17,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # MongoDB database for authentication service
   mongodb:
     image: mongo:latest
     container_name: mongodb
@@ -36,7 +38,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "none"
 
+  # ------------------- MEMORY SERVICES -------------------
   image_adapter:
     build:
       context: ./memory/image_adapter
@@ -80,6 +85,37 @@ services:
       - memory_logic
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
+  # ----------------- SOLITAIRE SERVICES -----------------
+  solitaire_leaderboard_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: leaderboard_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5431:5432"
+    volumes:
+      - leaderboard_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  solitaire_leaderboard_adapter:
+    build:
+      context: ./solitaire/leaderboard
+      dockerfile: Dockerfile
+    env_file:
+      - ./solitaire/leaderboard/.env
+    ports:
+      - "8012:8000"
+    restart: unless-stopped
+    depends_on:
+      solitaire_leaderboard_db:
+        condition: service_healthy
+
   deck_adapter:
     build:
       context: ./solitaire/deck_adapter
@@ -112,6 +148,7 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
+  # ------------------- UI APPLICATION -------------------
   ui:
     build:
       context: ./ui
@@ -124,6 +161,24 @@ services:
       - ./ui/public:/app/public
     environment:
       - VITE_API_URL=http://localhost:8000
+
+  # ------------------- AUTHENTICATION SERVICES -------------------
+  auth_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: authentication
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - authentication_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   google_auth:
     build:
@@ -148,10 +203,15 @@ services:
       context: ./authentication/adapter
       dockerfile: Dockerfile
     container_name: auth-adapter
+    env_file:
+      - ./authentication/adapter/.env
     ports:
-      - "8007:8000"
+      - "8011:8000"
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
+    depends_on:
+      auth_db:
+        condition: service_healthy
 
   auth_logic:
     build:
@@ -182,5 +242,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  authentication_data:
+  leaderboard_db_data:
   memory_db_data:
   mongodb_data:

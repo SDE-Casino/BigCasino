@@ -2,12 +2,12 @@ from fastapi import FastAPI, HTTPException
 from models.users import User, Base
 from pydantic import BaseModel
 import bcrypt
+import os
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-# TODO: The connection string below is for testing, later must be replaced by a real database URL
-DATABASE_URL = "sqlite+pysqlite:///./test.db"
-
+DATABASE_URL=os.getenv("DATABASE_URL")
+print(f"Connecting to database at {DATABASE_URL}")
 # Create the engine that will connect to the database
 engine = create_engine(DATABASE_URL, echo=True)
 

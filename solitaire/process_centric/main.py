@@ -55,18 +55,13 @@ def create_game(request: Request):
 
     jwt_token = jwt_token.replace("Bearer ", "")
 
-    print(f"[SOLITAIRE SERVICE] Verifying token: {jwt_token[:50]}...")  # DEBUG LOG
-    print(f"[SOLITAIRE SERVICE] JWT_SECRET_KEY: {os.getenv('JWT_SECRET_KEY')[:20]}...")  # DEBUG LOG
-    print(f"[SOLITAIRE SERVICE] JWT_ALGORITHM: {os.getenv('JWT_ALGORITHM')}")  # DEBUG LOG
-
+    user_id = None
     try:
         decoded = jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
-        print(f"[SOLITAIRE SERVICE] Token decoded successfully: {decoded}")  # DEBUG LOG
+        user_id = decoded['sub']
     except jwt.ExpiredSignatureError as e:
-        print(f"[SOLITAIRE SERVICE] Token expired error: {e}")  # DEBUG LOG
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError as e:
-        print(f"[SOLITAIRE SERVICE] Invalid token error: {e}")  # DEBUG LOG
         raise HTTPException(status_code=401, detail="Invalid token")
 
     url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/create_game"
@@ -74,6 +69,13 @@ def create_game(request: Request):
 
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.json()['detail'])
+
+    if user_id:
+        leaderboard_url = os.getenv("LEADERBOARD_URL") + "/new_game/" + user_id
+        leaderboard_response = requests.post(leaderboard_url)
+
+        if leaderboard_response.status_code != 200:
+            raise HTTPException(status_code=leaderboard_response.status_code, detail=leaderboard_response.json()['detail'])
 
     return response.json()
 
@@ -150,8 +152,10 @@ def move_card(request: Request, game_id: str, body: MoveCardRequest):
 
     jwt_token = jwt_token.replace("Bearer ", "")
 
+    user_id = None
     try:
-        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
+        decoded = jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
+        user_id = decoded['sub']
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
@@ -159,6 +163,39 @@ def move_card(request: Request, game_id: str, body: MoveCardRequest):
 
     url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/move_card/" + game_id
     response = requests.post(url, json=body.dict())
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json()['detail'])
+
+    if response.json().get("game_status") == "won" and user_id:
+        leaderboard_url = os.getenv("LEADERBOARD_URL") + "/won_game/" + user_id
+        leaderboard_response = requests.post(leaderboard_url)
+
+        if leaderboard_response.status_code != 200:
+            raise HTTPException(status_code=leaderboard_response.status_code, detail=leaderboard_response.json()['detail'])
+
+    return response.json()
+
+@app.get("/leaderboard")
+def get_leaderboard(request: Request):
+    """
+    Return the leaderboard with stats for all the users
+    """
+    jwt_token = request.headers.get("Authorization")
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Authorization token missing")
+
+    jwt_token = jwt_token.replace("Bearer ", "")
+
+    try:
+        jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    url = os.getenv("LEADERBOARD_URL") + "/leaderboard"
+    response = requests.get(url)
 
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.json()['detail'])
