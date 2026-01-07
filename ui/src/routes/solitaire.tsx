@@ -1,6 +1,5 @@
 import { createFileRoute, redirect, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
-import { useAuth } from '../contexts/AuthContext'
-import { Plus, Play, Gamepad2, RotateCcw, ArrowRight } from 'lucide-react'
+import { Plus, Play, Gamepad2, RotateCcw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { authService } from '../services/auth'
 
@@ -13,18 +12,25 @@ if (!(window as any).__solitaireGameStates) {
 }
 
 export const Route = createFileRoute('/solitaire')({
+  beforeLoad: async ({ location }) => {
+    // Check if user has a token in localStorage
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      throw redirect({
+        to: '/auth',
+        search: {
+          redirect: location.href
+        }
+      })
+    }
+  },
   component: Solitaire,
 })
 
 function Solitaire() {
-  const { isAuthenticated } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [isCreatingGame, setIsCreatingGame] = useState(false)
-
-  if (!isAuthenticated) {
-    throw redirect({ to: '/auth' })
-  }
 
   const isGameRoute = location.pathname.startsWith('/solitaire/game/')
 

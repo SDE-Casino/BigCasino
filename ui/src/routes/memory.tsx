@@ -54,11 +54,23 @@ const GAME_SIZES: GameSize[] = [
 ]
 
 export const Route = createFileRoute('/memory')({
+  beforeLoad: async ({ location }) => {
+    // Check if user has a token in localStorage
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      throw redirect({
+        to: '/auth',
+        search: {
+          redirect: location.href
+        }
+      })
+    }
+  },
   component: Memory,
 })
 
 function Memory() {
-  const { isAuthenticated, user } = useAuth()
+  const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [showSizePopup, setShowSizePopup] = useState(false)
@@ -67,10 +79,6 @@ function Memory() {
   const [isCreatingGame, setIsCreatingGame] = useState(false)
   const [gameToDelete, setGameToDelete] = useState<number | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-
-  if (!isAuthenticated) {
-    throw redirect({ to: '/auth' })
-  }
 
   // Fetch user's games on mount and when navigating back to memory page
   useEffect(() => {

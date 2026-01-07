@@ -1,34 +1,25 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, Link } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { Gamepad2, Dices } from 'lucide-react'
-import { useEffect } from 'react'
 
 export const Route = createFileRoute('/')({
+  beforeLoad: async ({ location }) => {
+    // Check if user has a token in localStorage
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      throw redirect({
+        to: '/auth',
+        search: {
+          redirect: location.href
+        }
+      })
+    }
+  },
   component: App,
 })
 
 function App() {
-  const { isAuthenticated, isLoading, user } = useAuth()
-  const navigate = useNavigate()
-
-  // Handle redirect in useEffect to avoid render issues
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate({ to: '/auth', replace: true })
-    }
-  }, [isLoading, isAuthenticated, navigate])
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return null // Will redirect via useEffect
-  }
+  const { user } = useAuth()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-8">

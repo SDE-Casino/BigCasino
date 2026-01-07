@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { authService } from '../services/auth'
 import { useState, useEffect } from 'react'
@@ -11,6 +11,7 @@ export const Route = createFileRoute('/auth')({
 function Auth() {
   const { isAuthenticated, login, register, loginWithGoogle, isLoading } = useAuth()
   const navigate = useNavigate()
+  const search = useSearch({ from: '/auth' })
   const [isLoginMode, setIsLoginMode] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -21,9 +22,10 @@ function Auth() {
   // Redirect if already authenticated (use effect to avoid render issues)
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate({ to: '/', replace: true })
+      const redirectUrl = (search as any).redirect
+      navigate({ to: redirectUrl || '/', replace: true })
     }
-  }, [isLoading, isAuthenticated, navigate])
+  }, [isLoading, isAuthenticated, navigate, search])
 
   // Check for Google OAuth callback
   useEffect(() => {
@@ -67,8 +69,9 @@ function Auth() {
         await register(credentials)
       }
 
-      // Redirect to home page after successful auth
-      navigate({ to: '/' })
+      // Redirect to the original destination or home page after successful auth
+      const redirectUrl = (search as any).redirect
+      navigate({ to: redirectUrl || '/' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
     } finally {
