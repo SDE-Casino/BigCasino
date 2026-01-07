@@ -20,25 +20,25 @@ BigCasino follows a **layered microservices architecture** with clear separation
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
 │       Memory        │     │      Solitaire      │     │   Authentication    │
 │   Process Centric   │     │   Process Centric   │     │   Process Centric   │
-└──────────┬──────────┘     └──────────┬──────────┘     └──────────┬──────────┘
-           │                           │                           │
-           ▼                           ▼                           ▼
-┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│    Memory Logic     │     │   Solitaire Logic   │     │     Auth Logic      │
-└──────────┬──────────┘     └──────────┬──────────┘     └──────────┬──────────┘
-           │                           │                           │
-     ┌─────┴─────┐                     │                     ┌─────┴─────┐
-     │           │                     │                     │           │
-     ▼           ▼                     ▼                     ▼           ▼
-┌─────────┐ ┌─────────┐       ┌─────────────┐       ┌─────────────┐ ┌─────────────┐
-│ Memory  │ │  Image  │       │    Deck     │       │    Auth     │ │   Google    │
-│ Adapter │ │ Adapter │       │   Adapter   │       │   Adapter   │ │    OAuth    │
-└────┬────┘ └─────────┘       └─────────────┘       └─────────────┘ └──────┬──────┘
-     │                                                                     │
-     ▼                                                                     ▼
-┌─────────────┐                                                   ┌─────────────┐
-│ PostgreSQL  │                                                   │   MongoDB   │
-└─────────────┘                                                   └─────────────┘
+└──────────┬──────────┘     └──────────┬───┬──────┘     └──────────┬──────────┘
+           │                           │   │                       │
+           ▼                           │   └──────────┐            ▼
+┌─────────────────────┐                ▼              │     ┌─────────────────────┐
+│    Memory Logic     │     ┌─────────────────────┐   │     │     Auth Logic      │
+└──────────┬──────────┘     │   Solitaire Logic   │   │     └──────────┬──────────┘
+           │                └──────────┬──────────┘   │                │
+     ┌─────┴─────┐                     │              │          ┌─────┴─────┐
+     │           │                     ▼              ▼          │           │
+     ▼           ▼               ┌─────────────┐ ┌─────────────┐ ▼           ▼
+┌─────────┐ ┌─────────┐          │    Deck     │ │ Leaderboard │ │    Auth     │ ┌─────────────┐
+│ Memory  │ │  Image  │          │   Adapter   │ │   Adapter   │ │   Adapter   │ │   Google    │
+│ Adapter │ │ Adapter │          └─────────────┘ └──────┬──────┘ └─────────────┘ │    OAuth    │
+└────┬────┘ └─────────┘                                 │                        └──────┬──────┘
+     │                                                  │                               │
+     ▼                                                  ▼                               ▼
+┌─────────────┐                                   ┌─────────────┐               ┌─────────────┐
+│ PostgreSQL  │                                   │ PostgreSQL  │               │   MongoDB   │
+└─────────────┘                                   └─────────────┘               └─────────────┘
 ```
 
 ### Layer Description
@@ -49,7 +49,7 @@ BigCasino follows a **layered microservices architecture** with clear separation
 | **Process Centric** | Orchestrates business workflows and coordinates between services |
 | **Logic** | Contains core game/authentication business logic |
 | **Adapter** | Handles data persistence and external API integrations |
-| **Database** | PostgreSQL for Memory, MongoDB for Authentication |
+| **Database** | PostgreSQL for Memory/Leaderboard, MongoDB for Authentication |
 
 ---
 
@@ -69,6 +69,7 @@ BigCasino/
 ├── solitaire/                   # Solitaire game service
 │   ├── process_centric/         # Process centric layer
 │   ├── solitaire_logic/         # Game logic
+│   ├── leaderboard/             # Leaderboard adapter (PostgreSQL)
 │   └── deck_adapter/            # Card deck API adapter
 │
 ├── authentication/              # Authentication service
@@ -121,12 +122,14 @@ BigCasino/
 | Image Adapter | 8000 |
 | Solitaire (Process Centric) | 8010 |
 | Solitaire Logic | 8005 |
+| Solitaire Leaderboard Adapter | 8012 |
 | Deck Adapter | 8006 |
 | Auth (Process Centric) | 8009 |
 | Auth Logic | 8008 |
 | Auth Adapter | 8007 |
 | Google OAuth | 8004 |
-| PostgreSQL | 5432 |
+| PostgreSQL (Memory) | 5432 |
+| PostgreSQL (Leaderboard) | 5431 |
 | MongoDB | 27017 |
 
 ---
