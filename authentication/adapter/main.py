@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 DATABASE_URL=os.getenv("DATABASE_URL")
-print(f"Connecting to database at {DATABASE_URL}")
+
 # Create the engine that will connect to the database
 engine = create_engine(DATABASE_URL, echo=True)
 
@@ -17,7 +17,7 @@ class RequestArgs(BaseModel):
     username: str
     password: str
 
-app = FastAPI()
+app = FastAPI(title="Authentication Adapter", description="Interacts with the authentication database.")
 
 @app.get("/user_name/{id}")
 def get_user_name(id: str):

@@ -5,7 +5,7 @@ from process.authentication_service import authentication_service
 from typing import Optional
 import os
 
-app = FastAPI()
+app = FastAPI(title="Google Authentication Adapter", description="Handles Google OAuth2 authentication.")
 
 class GoogleTokenRequest(BaseModel):
     googleToken: str

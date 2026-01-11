@@ -11,7 +11,7 @@ import uuid as uuid_lib
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(title="Process-Centric Authentication Service", description="Service for user authentication and registration")
 
 # Configure CORS
 app.add_middleware(
@@ -61,7 +61,7 @@ def mongo_id_to_uuid(mongo_id: str) -> str:
     """
     # Remove any hyphens if present
     clean_id = mongo_id.replace('-', '')
-    
+
     # If it's already 24 chars (ObjectId), pad to 32 chars
     if len(clean_id) == 24:
         # Pad with zeros to make it 32 chars (UUID length)
@@ -71,10 +71,10 @@ def mongo_id_to_uuid(mongo_id: str) -> str:
     else:
         # Fallback: just use as-is if unexpected length
         padded_id = clean_id
-    
+
     # Format as UUID: 8-4-4-4-12
     uuid_str = f"{padded_id[0:8]}-{padded_id[8:12]}-{padded_id[12:16]}-{padded_id[16:20]}-{padded_id[20:32]}"
-    
+
     return uuid_str
 
 
@@ -96,7 +96,7 @@ def register(credentials: UserCredentials, response: Response):
         )
 
     data = logic_response.json()
-    
+
     # Ensure user ID is in UUID format (logic layer should already return UUIDs)
     user_id = data["id"]
     if len(user_id.replace('-', '')) == 24:
@@ -151,7 +151,7 @@ def login(credentials: UserCredentials, response: Response):
         )
 
     data = logic_response.json()
-    
+
     # Ensure user ID is in UUID format (logic layer should already return UUIDs)
     user_id = data["id"]
     if len(user_id.replace('-', '')) == 24:
@@ -216,9 +216,9 @@ def refresh(request: Request):
 
     provider = payload.get("provider", "local")
     user_id = payload["sub"]
-    
+
     print(f"[PROCESS-CENTRIC] Refresh token for user_id: {user_id}, provider: {provider}")  # DEBUG LOG
-    
+
     new_access = create_jwt(
         {
             "sub": user_id,  # Already in UUID format from original token
@@ -264,13 +264,13 @@ def google_refresh_token(request: Request, response: Response):
     """
     data = request.query_params
     mongo_user_id = data.get("id")
-    
+
     print(f"[PROCESS-CENTRIC] Google callback - mongo_user_id: {mongo_user_id}")  # DEBUG LOG
-    
+
     # Convert MongoDB ObjectId to UUID format for PostgreSQL compatibility
     user_id = mongo_id_to_uuid(mongo_user_id)
     print(f"[PROCESS-CENTRIC] Converted to UUID: {user_id}")  # DEBUG LOG
-    
+
     access_token = create_jwt(
         {
             "sub": user_id,
@@ -322,7 +322,7 @@ def verify_google_token(request: Request):
 
     print(f"[PROCESS-CENTRIC] Calling Google verify at: {url}")  # DEBUG LOG
     print(f"[PROCESS-CENTRIC] Headers sent: {headers}")  # DEBUG LOG
-    
+
     google_response = requests.get(url, headers=headers)
 
     print(f"[PROCESS-CENTRIC] Google response status: {google_response.status_code}")  # DEBUG LOG
@@ -335,24 +335,24 @@ def verify_google_token(request: Request):
         )
 
     google_data = google_response.json()
-    
+
     print(f"[PROCESS-CENTRIC] Google response data: {google_data}")  # DEBUG LOG
-    
+
     # Extract user ID from Google response
     # The Google service returns a JWT payload with 'user_id' and 'email'
     mongo_user_id = google_data.get("user_id") or google_data.get("id") or google_data.get("user", {}).get("id")
     username = google_data.get("email") or google_data.get("username") or google_data.get("user", {}).get("email")
-    
+
     if not mongo_user_id:
         print(f"[PROCESS-CENTRIC] ERROR: No user ID found in Google response: {google_data}")  # DEBUG LOG
         raise HTTPException(status_code=500, detail="User ID not found in Google response")
-    
+
     print(f"[PROCESS-CENTRIC] Extracted mongo_user_id: {mongo_user_id}, username: {username}")  # DEBUG LOG
-    
+
     # Convert MongoDB ObjectId to UUID format for PostgreSQL compatibility
     user_id = mongo_id_to_uuid(mongo_user_id)
     print(f"[PROCESS-CENTRIC] Converted to UUID: {user_id}")  # DEBUG LOG
-    
+
     # Generate JWT access token (same as local auth)
     # Use the converted UUID (user_id) not the original MongoDB ID (mongo_user_id)
     access_token = create_jwt(
@@ -363,19 +363,19 @@ def verify_google_token(request: Request):
         },
         minutes=int(os.getenv("ACCESS_TOKEN_MINUTES"))
     )
-    
+
     print(f"[PROCESS-CENTRIC] Generated JWT access token with sub={user_id}")  # DEBUG LOG
-    
+
     response_data = {
         "id": user_id,  # Return UUID format
         "username": username,
         "access_token": access_token,
         "login_type": "google"
     }
-    
+
     print(f"[PROCESS-CENTRIC] Returning to UI: {response_data}")  # DEBUG LOG
     print(f"[PROCESS-CENTRIC] Has access_token? {'access_token' in response_data}")  # DEBUG LOG
-    
+
     return response_data
 
 
