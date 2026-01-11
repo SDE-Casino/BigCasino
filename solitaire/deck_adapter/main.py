@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 import requests
 
-app = FastAPI()
+app = FastAPI(title="Solitaire deck adapter", description="Adapter that provides Deck of Cards API functionalities to Solitaire game")
 api_url = "https://deckofcardsapi.com/api/deck"
 
 DEBUG_DECK = "j3377oca0u0b"

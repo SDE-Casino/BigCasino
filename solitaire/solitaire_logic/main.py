@@ -28,8 +28,8 @@ MoveCardRequest = Union [
     MoveCardToFoundationFromTalon
 ]
 
+app = FastAPI(title="Solitaire Logic Service", description="Manages all the game logic for Solitaire game")
 
-app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

@@ -10,7 +10,6 @@ import os
 
 load_dotenv()
 
-
 class MoveCardInsideTableauRequest(BaseModel):
     column_from: int
     column_to: int
@@ -33,8 +32,8 @@ MoveCardRequest = Union [
     MoveCardToFoundationFromTalon
 ]
 
+app = FastAPI(title="Solitaire Process-Centric Service", description="Service that exposes the solitaire game functionalities and provide the leaderboard to the UI")
 
-app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

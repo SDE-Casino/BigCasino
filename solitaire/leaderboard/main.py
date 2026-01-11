@@ -9,7 +9,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL, echo=True)
 Base.metadata.create_all(engine)
 
-app = FastAPI()
+app = FastAPI(title="Solitaire Leaderboard Service", description="Service to manage the leaderboard for Solitaire game")
 
 @app.get("/leaderboard")
 def get_user_name():
