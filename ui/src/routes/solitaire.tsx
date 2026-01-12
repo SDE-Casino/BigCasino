@@ -5,7 +5,7 @@ import { authService } from '../services/auth'
 
 const SOLITAIRE_SERVICE_URL = 'http://localhost:8010'
 
-// Store game states in window object for access across routes
+
 // @ts-ignore
 if (!(window as any).__solitaireGameStates) {
   ; (window as any).__solitaireGameStates = {}
@@ -19,7 +19,7 @@ interface LeaderboardEntry {
 
 export const Route = createFileRoute('/solitaire')({
   beforeLoad: async ({ location }) => {
-    // Check if user has a token in localStorage
+
     const token = localStorage.getItem('access_token')
     if (!token) {
       throw redirect({
@@ -78,7 +78,7 @@ function Solitaire() {
     setIsCreatingGame(true)
     try {
       const token = authService.getAccessToken()
-      console.log('Creating game with token:', token ? 'Token exists' : 'No token found')
+
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -93,18 +93,18 @@ function Solitaire() {
         headers,
       })
 
-      console.log('Response status:', response.status)
+
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+
         throw new Error(errorData.detail || 'Failed to create game')
       }
 
       const data = await response.json()
-      console.log('Game created:', data)
 
-        // Store game state in window object for later use
+
+
         ; (window as any).__solitaireGameStates[data.game_id] = data.game_state
       navigate({ to: '/solitaire/game/$id', params: { id: data.game_id } })
     } catch (err) {
@@ -113,7 +113,7 @@ function Solitaire() {
     }
   }
 
-  // Clean up loading state when navigating to game route
+
   useEffect(() => {
     if (isGameRoute) {
       setIsCreatingGame(false)
@@ -124,71 +124,71 @@ function Solitaire() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {!isGameRoute && (
         <div className="fixed w-130 left-5 top-25 self-start">
-        <div className="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 animate-in fade-in slide-in-from-right-4 duration-500 delay-400 hover:shadow-md transition-shadow duration-300">
-          <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
-            <Trophy size={20} className="text-yellow-500" />
-            Leaderboard
-          </h2>
+          <div className="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 animate-in fade-in slide-in-from-right-4 duration-500 delay-400 hover:shadow-md transition-shadow duration-300">
+            <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
+              <Trophy size={20} className="text-yellow-500" />
+              Leaderboard
+            </h2>
 
-          {isLoadingLeaderboard ? (
-            <div className="flex justify-center py-8">
-              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            </div>
-          ) : leaderboard.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium">
-                  <tr>
-                    <th className="px-2 py-3 rounded-l-lg">User</th>
-                    <th className="px-2 py-3">Played</th>
-                    <th className="px-2 py-3">Won</th>
-                    <th className="px-2 py-3 rounded-r-lg">Rate</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {leaderboard
-                    .sort((a, b) => b.games_won - a.games_won)
-                    .slice(0, 10)
-                    .map((entry) => {
-                      const winRate = entry.played_games > 0
-                        ? Math.round((entry.games_won / entry.played_games) * 100)
-                        : 0;
-                      const isCurrentUser = authService.getUser()?.id === entry.user_id;
+            {isLoadingLeaderboard ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+              </div>
+            ) : leaderboard.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-slate-500 font-medium">
+                    <tr>
+                      <th className="px-2 py-3 rounded-l-lg">User</th>
+                      <th className="px-2 py-3">Played</th>
+                      <th className="px-2 py-3">Won</th>
+                      <th className="px-2 py-3 rounded-r-lg">Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {leaderboard
+                      .sort((a, b) => b.games_won - a.games_won)
+                      .slice(0, 10)
+                      .map((entry) => {
+                        const winRate = entry.played_games > 0
+                          ? Math.round((entry.games_won / entry.played_games) * 100)
+                          : 0;
+                        const isCurrentUser = authService.getUser()?.id === entry.user_id;
 
-                      return (
-                        <tr key={entry.user_id} className={`hover:bg-slate-50 transition-colors ${isCurrentUser ? 'bg-blue-50/50' : ''}`}>
-                          <td className="px-2 py-3 font-medium text-slate-900 truncate max-w-[120px]" title={entry.user_id}>
-                            {isCurrentUser ? `${entry.user_id.substring(0, 8)}... (You)` : entry.user_id.substring(0, 10)}
-                          </td>
-                          <td className="px-2 py-3 text-slate-600">{entry.played_games}</td>
-                          <td className="px-2 py-3 text-slate-600">{entry.games_won}</td>
-                          <td className="px-2 py-3 text-slate-600">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${winRate >= 50 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
-                              }`}>
-                              {winRate}%
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-slate-500 text-sm">
-              No games played yet. Be the first to top the leaderboard!
-            </div>
-          )}
+                        return (
+                          <tr key={entry.user_id} className={`hover:bg-slate-50 transition-colors ${isCurrentUser ? 'bg-blue-50/50' : ''}`}>
+                            <td className="px-2 py-3 font-medium text-slate-900 truncate max-w-[120px]" title={entry.user_id}>
+                              {isCurrentUser ? `${entry.user_id.substring(0, 8)}... (You)` : entry.user_id.substring(0, 10)}
+                            </td>
+                            <td className="px-2 py-3 text-slate-600">{entry.played_games}</td>
+                            <td className="px-2 py-3 text-slate-600">{entry.games_won}</td>
+                            <td className="px-2 py-3 text-slate-600">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${winRate >= 50 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                {winRate}%
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-500 text-sm">
+                No games played yet. Be the first to top the leaderboard!
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       )}
 
       {!isGameRoute ? (
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex gap-8 justify-center">
-            {/* Main Content */}
+
             <div className="flex-1 max-w-3xl">
-              {/* Header */}
+
               <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
                 <h1 className="text-4xl font-bold text-slate-800 mb-3">Solitaire</h1>
                 <p className="text-slate-600 max-w-xl mx-auto">
@@ -196,7 +196,7 @@ function Solitaire() {
                 </p>
               </div>
 
-              {/* Quick Start */}
+
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 hover:shadow-md transition-shadow duration-300">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
@@ -218,7 +218,7 @@ function Solitaire() {
                 </div>
               </div>
 
-              {/* How to Play */}
+
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 hover:shadow-md transition-shadow duration-300">
                 <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                   <Gamepad2 size={20} className="text-blue-500" />
@@ -264,7 +264,7 @@ function Solitaire() {
                 </div>
               </div>
 
-              {/* Game Tips */}
+
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 hover:shadow-md transition-shadow duration-300">
                 <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                   <RotateCcw size={20} className="text-blue-500" />
@@ -298,7 +298,7 @@ function Solitaire() {
         </div>
       )}
 
-      {/* Loading Overlay */}
+
       {isCreatingGame && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center animate-in zoom-in-95 duration-300 hover:scale-105 transition-transform duration-300">

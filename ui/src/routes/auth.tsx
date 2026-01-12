@@ -19,7 +19,7 @@ function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false)
 
-  // Redirect if already authenticated (use effect to avoid render issues)
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       const redirectUrl = (search as any).redirect
@@ -27,7 +27,7 @@ function Auth() {
     }
   }, [isLoading, isAuthenticated, navigate, search])
 
-  // Check for Google OAuth callback
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const googleAuth = urlParams.get('google_auth')
@@ -69,7 +69,7 @@ function Auth() {
         await register(credentials)
       }
 
-      // Redirect to the original destination or home page after successful auth
+
       const redirectUrl = (search as any).redirect
       navigate({ to: redirectUrl || '/' })
     } catch (err) {
@@ -89,16 +89,16 @@ function Auth() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 relative overflow-hidden">
-      {/* Animated background elements */}
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Card with glassmorphism effect */}
+
         <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 p-8 sm:p-10 transform transition-all duration-500 hover:scale-[1.01]">
-          {/* Logo/Icon */}
+
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +185,7 @@ function Auth() {
             </button>
           </form>
 
-          {/* Divider */}
+
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200"></div>
@@ -195,7 +195,7 @@ function Auth() {
             </div>
           </div>
 
-          {/* Google OAuth Button */}
+
           <button
             type="button"
             onClick={handleGoogleLogin}

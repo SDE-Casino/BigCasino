@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Trophy, RotateCcw, ArrowLeft, RefreshCw, Sparkles, XCircle, AlertCircle } from 'lucide-react'
+import { Trophy, RotateCcw, ArrowLeft, RefreshCw, XCircle, AlertCircle } from 'lucide-react'
 import { authService } from '../services/auth'
 
 const SOLITAIRE_SERVICE_URL = 'http://localhost:8010'
 
-// Toast notification component
+
 interface ToastProps {
   message: string
   type: 'error' | 'warning'
@@ -39,7 +39,7 @@ function Toast({ message, type, onClose }: ToastProps) {
   )
 }
 
-// Import game states from parent route
+
 // @ts-ignore
 const getGameStates = () => (window as any).__solitaireGameStates || {}
 // @ts-ignore
@@ -50,11 +50,11 @@ const storeGameState = (gameId: string, state: any) => {
   ; (window as any).__solitaireGameStates[gameId] = state
 }
 
-// Preload all card images from game state
+
 const preloadCardImages = async (gameState: any): Promise<void> => {
   const imageUrls = new Set<string>()
 
-  // Collect all unique image URLs from the game state
+
   const collectImages = (cards: any[]) => {
     cards.forEach(card => {
       if (typeof card === 'object' && card !== null) {
@@ -72,7 +72,7 @@ const preloadCardImages = async (gameState: any): Promise<void> => {
     })
   }
 
-  // Collect images from all piles
+
   if (gameState?.tableau) {
     gameState.tableau.forEach((column: any[]) => collectImages(column))
   }
@@ -90,9 +90,9 @@ const preloadCardImages = async (gameState: any): Promise<void> => {
     })
   }
 
-  // Preload all images
+
   const preloadPromises = Array.from(imageUrls).map(url => {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       const img = new Image()
       img.onload = () => resolve()
       img.onerror = () => resolve() // Resolve even on error to not block the game
@@ -103,7 +103,7 @@ const preloadCardImages = async (gameState: any): Promise<void> => {
   await Promise.all(preloadPromises)
 }
 
-// Confetti component
+
 function Confetti({ active }: { active: boolean }) {
   if (!active) return null
 
@@ -139,7 +139,7 @@ function Confetti({ active }: { active: boolean }) {
   )
 }
 
-// Card component
+
 interface CardProps {
   card: { value: string; suit: string; image?: string }
   faceUp: boolean
@@ -175,7 +175,7 @@ function Card({ card, faceUp, selected, onClick }: CardProps) {
           className="w-full h-full object-cover"
         />
       ) : (
-        // Fallback to custom rendering if image is not available
+
         <div className="w-full h-full flex flex-col items-center justify-center p-2">
           <span className="text-lg font-bold">{card.value}</span>
           <span className="text-2xl">{card.suit[0]}</span>
@@ -213,7 +213,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       setLoading(true)
       setError(null)
 
-      // Try to get stored game state first
+
       const storedStates = getGameStates()
       const storedState = storedStates[gameId]
 
@@ -225,7 +225,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         return
       }
 
-      // If no stored state, show error (we can't fetch game state from API)
+
       setError('Game not found. Please start a new game from the main page.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load game')
@@ -238,61 +238,14 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     navigate({ to: '/solitaire' })
   }
 
-  const handleNewGame = async () => {
-    setIsProcessing(true)
-    try {
-      const token = authService.getAccessToken()
-      console.log('Creating game with token:', token ? 'Token exists' : 'No token found')
-
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      }
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch(`${SOLITAIRE_SERVICE_URL}/create_game`, {
-        method: 'POST',
-        headers,
-      })
-
-      console.log('Response status:', response.status)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('Error response:', errorData)
-        throw new Error(errorData.detail || 'Failed to create game')
-      }
-
-      const data = await response.json()
-      console.log('Game created:', data)
-
-      // Preload card images
-      await preloadCardImages(data.game_state)
-
-      setGameState(data.game_state)
-      setWon(false)
-      setSelectedCard(null)
-      // Store new game state
-      storeGameState(gameId, data.game_state)
-      if (data.game_status === 'won') {
-        setWon(true)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create game')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
 
   const handleDrawCards = async () => {
     if (isProcessing) return
     setIsProcessing(true)
     try {
-      console.log('Drawing cards. Current talon before:', gameState?.talon)
+
       const token = authService.getAccessToken()
-      console.log('Draw cards with token:', token ? 'Token exists' : 'No token found')
+
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -309,15 +262,14 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+
         throw new Error(errorData.detail || 'Failed to draw cards')
       }
 
       const data = await response.json()
-      console.log('Draw cards response:', data)
-      console.log('New talon after draw:', data.game_state.talon)
+
       setGameState(data.game_state)
-      // Clear selected card when drawing new cards, as the talon has changed
+
       setSelectedCard(null)
       if (data.game_status === 'won') {
         setWon(true)
@@ -335,7 +287,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     setIsProcessing(true)
     try {
       const token = authService.getAccessToken()
-      console.log('Reset stock with token:', token ? 'Token exists' : 'No token found')
+
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -352,13 +304,13 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+
         throw new Error(errorData.detail || 'Failed to reset stock')
       }
 
       const data = await response.json()
       setGameState(data.game_state)
-      // Clear selected card when resetting stock, as the talon has changed
+
       setSelectedCard(null)
       if (data.game_status === 'won') {
         setWon(true)
@@ -379,19 +331,14 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
   ) => {
     if (isProcessing || won) return
 
-    console.log('Card clicked:', { card, source, sourceIndex, cardIndex })
-    console.log('Current selectedCard:', selectedCard)
-    console.log('Current talon:', gameState?.talon)
 
     // If no card is selected, select this card
     if (!selectedCard) {
       setSelectedCard({ card, source, sourceIndex, cardIndex })
-      console.log('Selected card:', { card, source, sourceIndex, cardIndex })
       return
     }
 
-    // If clicking the same card, deselect it
-    // Compare card properties instead of object reference to handle state updates
+
     const isSameCard =
       selectedCard.card.value === card.value &&
       selectedCard.card.suit === card.suit &&
@@ -400,12 +347,11 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       selectedCard.cardIndex === cardIndex
 
     if (isSameCard) {
-      console.log('Deselecting card')
       setSelectedCard(null)
       return
     }
 
-    // Try to move the selected card to the clicked destination
+
     await handleMove(selectedCard, { card, source, sourceIndex, cardIndex })
   }
 
@@ -417,9 +363,9 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     try {
       let body: any = {}
 
-      // Build the request body based on source and destination
+
       if (from.source === 'tableau' && to.source === 'tableau') {
-        // Calculate number of cards from the clicked card to the end of the column
+
         const fromColumn = gameState.tableau[from.sourceIndex]
         const numberOfCards = from.cardIndex !== undefined ? fromColumn.length - from.cardIndex : 1
         body = {
@@ -441,14 +387,13 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
           suit: to.card.suit,
         }
       } else {
-        // Invalid move combination
         setSelectedCard(null)
         setIsProcessing(false)
         return
       }
 
       const token = authService.getAccessToken()
-      console.log('Move card with token:', token ? 'Token exists' : 'No token found')
+
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -466,13 +411,13 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+
         throw new Error(errorData.detail || 'Failed to move card')
       }
 
       const data = await response.json()
       setGameState(data.game_state)
-      // Update stored game state
+
       storeGameState(gameId, data.game_state)
       setSelectedCard(null)
       if (data.game_status === 'won') {
@@ -492,7 +437,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     // If no card is selected, do nothing
     if (!selectedCard) return
 
-    // Try to move the selected card to this foundation
+
     setIsProcessing(true)
     try {
       let body: any = {}
@@ -513,7 +458,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       }
 
       const token = authService.getAccessToken()
-      console.log('Move to foundation with token:', token ? 'Token exists' : 'No token found')
+
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -531,13 +476,13 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+
         throw new Error(errorData.detail || 'Failed to move card')
       }
 
       const data = await response.json()
       setGameState(data.game_state)
-      // Update stored game state
+
       storeGameState(gameId, data.game_state)
       setSelectedCard(null)
       if (data.game_status === 'won') {
@@ -557,7 +502,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
     // If no card is selected, do nothing
     if (!selectedCard) return
 
-    // Try to move the selected card to this empty column
+
     setIsProcessing(true)
     try {
       let body: any = {}
@@ -582,7 +527,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
       }
 
       const token = authService.getAccessToken()
-      console.log('Move to empty tableau with token:', token ? 'Token exists' : 'No token found')
+
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -600,13 +545,13 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('Error response:', errorData)
+
         throw new Error(errorData.detail || 'Failed to move card')
       }
 
       const data = await response.json()
       setGameState(data.game_state)
-      // Update stored game state
+
       storeGameState(gameId, data.game_state)
       setSelectedCard(null)
       if (data.game_status === 'won') {
@@ -689,7 +634,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
         />
       )}
       <div className="max-w-6xl mx-auto p-4">
-        {/* Header */}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <button
@@ -703,7 +648,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
           </div>
         </div>
 
-        {/* Winner Banner */}
+
         {won && (
           <div className="mb-6 p-6 bg-amber-50 rounded-2xl border border-amber-200 text-center animate-in fade-in zoom-in-95 duration-500">
             <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-3 animate-bounce">
@@ -714,10 +659,10 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
           </div>
         )}
 
-        {/* Stock, Talon, and Foundation */}
+
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Stock */}
+
             <div className="flex items-center gap-4">
               <div className="w-20 h-28">
                 {stock.length > 0 ? (
@@ -746,7 +691,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
               </div>
             </div>
 
-            {/* Talon - shows up to 3 cards stacked, all selectable */}
+
             <div className="flex items-center gap-4">
               <div className="text-slate-500 text-sm">
                 <p className="font-medium">Talon</p>
@@ -755,10 +700,8 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
               <div className="relative w-48 h-28">
                 {talon.length > 0 && (
                   <>
-                    {/* Show up to 3 cards stacked with more visibility */}
                     {talon.slice(-3).map((card: any, index: number) => {
                       const actualIndex = talon.length - 3 + index
-                      const isTopCard = actualIndex === talon.length - 1
                       const isSelected = selectedCard?.source === 'talon' && selectedCard.sourceIndex === actualIndex
                       return (
                         <div
@@ -789,7 +732,7 @@ export default function SolitaireGame({ gameId }: SolitaireGameProps) {
               </div>
             </div>
 
-            {/* Foundations */}
+
             <div className="flex gap-3">
               {(['HEARTS', 'DIAMONDS', 'CLUBS', 'SPADES'] as const).map((suit) => (
                 <button

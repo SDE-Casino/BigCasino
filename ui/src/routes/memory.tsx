@@ -23,7 +23,7 @@ interface Game {
   player2Cards: Card[]
 }
 
-// Helper function to convert size to grid label
+
 function getSizeLabel(size: number | null | undefined): string {
   if (size === null || size === undefined) {
     return 'Unknown'
@@ -55,7 +55,7 @@ const GAME_SIZES: GameSize[] = [
 
 export const Route = createFileRoute('/memory')({
   beforeLoad: async ({ location }) => {
-    // Check if user has a token in localStorage
+
     const token = localStorage.getItem('access_token')
     if (!token) {
       throw redirect({
@@ -80,7 +80,7 @@ function Memory() {
   const [gameToDelete, setGameToDelete] = useState<number | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  // Fetch user's games on mount and when navigating back to memory page
+
   useEffect(() => {
     const fetchUserGames = async () => {
       try {
@@ -106,7 +106,7 @@ function Memory() {
       }
     }
 
-    // Only fetch when on the memory page (not on game sub-routes)
+
     if (!isGameRoute) {
       fetchUserGames()
     }
@@ -114,7 +114,7 @@ function Memory() {
 
   const isGameRoute = location.pathname.startsWith('/memory/game/')
 
-  // Reset creating game state when navigating to game route
+
   useEffect(() => {
     if (isGameRoute) {
       setIsCreatingGame(false)
@@ -177,7 +177,7 @@ function Memory() {
       })
       if (!response.ok) throw new Error('Failed to delete game')
 
-      // Refresh games list
+
       const gamesResponse = await fetch(`${MEMORY_SERVICE_URL}/user_games/${user?.id || 1}`, {
         headers,
       })
@@ -197,7 +197,7 @@ function Memory() {
       <div className="max-w-4xl mx-auto p-6">
         {!isGameRoute && (
           <>
-            {/* Header */}
+
             <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
               <h1 className="text-4xl font-bold text-slate-800 mb-3">Memory Game</h1>
               <p className="text-slate-600 max-w-xl mx-auto">
@@ -205,7 +205,7 @@ function Memory() {
               </p>
             </div>
 
-            {/* Quick Start */}
+
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 hover:shadow-md transition-shadow duration-300">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -227,7 +227,7 @@ function Memory() {
               </div>
             </div>
 
-            {/* How to Play */}
+
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 hover:shadow-md transition-shadow duration-300">
               <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                 <Gamepad2 size={20} className="text-blue-500" />
@@ -258,7 +258,7 @@ function Memory() {
               </div>
             </div>
 
-            {/* Previous Games */}
+
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 hover:shadow-md transition-shadow duration-300">
               <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
                 <Trophy size={20} className="text-amber-500" />
@@ -350,7 +350,7 @@ function Memory() {
 
         <Outlet />
 
-        {/* Loading Overlay */}
+
         {isCreatingGame && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center animate-in zoom-in-95 duration-300 hover:scale-105 transition-transform duration-300">
@@ -369,7 +369,7 @@ function Memory() {
           </div>
         )}
 
-        {/* Size Selection Popup */}
+
         {showSizePopup && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full animate-in slide-in-from-bottom-8 duration-300">
@@ -402,7 +402,7 @@ function Memory() {
           </div>
         )}
 
-        {/* Delete Confirmation Dialog */}
+
         {showDeleteDialog && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full animate-in zoom-in-95 duration-300 hover:scale-105 transition-transform duration-300">

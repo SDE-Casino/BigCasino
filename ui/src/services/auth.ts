@@ -1,7 +1,6 @@
 import type {
     UserCredentials,
     AuthResponse,
-    GoogleAuthResponse,
     RefreshResponse,
     LogoutResponse,
     AuthError,
@@ -153,33 +152,18 @@ class AuthService {
     }
 
     async handleGoogleCallback(): Promise<AuthResponse> {
-        // This is called when returning from Google OAuth
-        // The process-centric service will set cookies and redirect back
-        // We need to verify the token and get user info
-
-        console.log('[UI AUTH] Calling /google/verify_token')  // DEBUG LOG
-
         const response = await fetch(`${API_URL}/google/verify_token`, {
             method: 'GET',
             credentials: 'include',
             headers: this.getHeaders(),
         })
 
-        console.log('[UI AUTH] Response status:', response.status)  // DEBUG LOG
-
         const data = await this.handleResponse<AuthResponse>(response)
 
-        console.log('[UI AUTH] Response data:', data)  // DEBUG LOG
-        console.log('[UI AUTH] Has access_token?', !!data.access_token)  // DEBUG LOG
-
-        // Store access token and user data
         if (data.access_token) {
             this.setAccessToken(data.access_token)
             const userId = getUserIdFromToken(data.access_token) || data.id
             this.setUser({ id: userId, username: data.username })
-            console.log('[UI AUTH] Token stored successfully')  // DEBUG LOG
-        } else {
-            console.error('[UI AUTH] ERROR: No access_token in response!')  // DEBUG LOG
         }
 
         return data

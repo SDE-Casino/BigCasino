@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Trophy, RotateCcw, Clock, User, ArrowLeft } from 'lucide-react'
 import { authService } from '../services/auth'
 
-// Confetti component
+
 function Confetti({ active }: { active: boolean }) {
     if (!active) return null
 
@@ -291,7 +291,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
             <div className="max-w-4xl mx-auto p-6">
-                {/* Header */}
+
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
                         <button
@@ -313,7 +313,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                     </button>
                 </div>
 
-                {/* Winner Banner */}
+
                 {game.winner && (
                     <>
                         <Confetti active={true} />
@@ -329,7 +329,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                     </>
                 )}
 
-                {/* Turn Indicator */}
+
                 <div className="mb-8 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
                     <div className="flex items-center justify-center gap-4">
                         <div className={`w-3 h-3 rounded-full ${!game.currentTurn ? 'bg-blue-600 animate-pulse' : 'bg-slate-300'}`}></div>
@@ -342,7 +342,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                     </div>
                 </div>
 
-                {/* Game Board */}
+
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-8">
                     <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
                         {Array.from({ length: tableCards.length + player1Cards.length + player2Cards.length }, (_, index) => {
@@ -407,7 +407,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                     </div>
                 </div>
 
-                {/* Player Scores */}
+
                 <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className={`p-5 rounded-xl border-2 transition-all duration-500 ease-in-out ${!game.currentTurn ? 'bg-white border-blue-500 shadow-md shadow-blue-500/20' : 'bg-white border-slate-200'}`}>
                         <div className="flex items-center gap-3">
@@ -439,7 +439,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                     </div>
                 </div>
 
-                {/* Waiting Indicator - Fixed height container to prevent layout shift */}
+
                 <div className="mb-8 min-h-[52px]">
                     {isWaiting && (
                         <div className="p-4 bg-blue-50 rounded-xl text-center border border-blue-100">
@@ -451,7 +451,7 @@ export default function MemoryGame({ gameId }: MemoryGameProps) {
                     )}
                 </div>
 
-                {/* Size Selection Popup */}
+
                 {showSizePopup && (
                     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full">

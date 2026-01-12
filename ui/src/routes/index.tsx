@@ -4,7 +4,7 @@ import { Gamepad2, Dices } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async ({ location }) => {
-    // Check if user has a token in localStorage
+
     const token = localStorage.getItem('access_token')
     if (!token) {
       throw redirect({
