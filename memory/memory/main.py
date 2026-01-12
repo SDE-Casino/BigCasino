@@ -34,13 +34,10 @@ def verify_jwt_token(request: Request):
 
     jwt_token = jwt_token.replace("Bearer ", "")
 
-    print(f"[MEMORY SERVICE] Verifying token: {jwt_token[:50]}...")  # DEBUG LOG
-    print(f"[MEMORY SERVICE] JWT_SECRET_KEY: {os.getenv('JWT_SECRET_KEY')[:20]}...")  # DEBUG LOG
-    print(f"[MEMORY SERVICE] JWT_ALGORITHM: {os.getenv('JWT_ALGORITHM')}")  # DEBUG LOG
+    
 
     try:
         decoded = jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
-        print(f"[MEMORY SERVICE] Token decoded successfully: {decoded}")  # DEBUG LOG
         return decoded
     except jwt.ExpiredSignatureError as e:
         print(f"[MEMORY SERVICE] Token expired error: {e}")  # DEBUG LOG
