@@ -23,32 +23,25 @@ app.add_middleware(
 # Service URL
 MEMORY_LOGIC_URL = "http://memory_logic:8000"
 
-# JWT verification function
 def verify_jwt_token(request: Request):
-    """
-    Verify JWT token from Authorization header
-    """
     jwt_token = request.headers.get("Authorization")
     if not jwt_token:
         raise HTTPException(status_code=401, detail="Authorization token missing")
 
     jwt_token = jwt_token.replace("Bearer ", "")
 
-    
-
     try:
         decoded = jwt.decode(jwt_token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
         return decoded
     except jwt.ExpiredSignatureError as e:
-        print(f"[MEMORY SERVICE] Token expired error: {e}")  # DEBUG LOG
+        print(f"[MEMORY SERVICE] Token expired error: {e}")
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError as e:
-        print(f"[MEMORY SERVICE] Invalid token error: {e}")  # DEBUG LOG
+        print(f"[MEMORY SERVICE] Invalid token error: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# Pydantic models to match memory_logic
 class CreateGameRequest(BaseModel):
-    userId: str  # Changed to UUID string
+    userId: str
     size: int
 
 class FlipCardRequest(BaseModel):
@@ -73,9 +66,6 @@ async def health_check():
 
 @app.post("/create_game")
 async def create_game(request: Request, create_request: CreateGameRequest):
-    """
-    Forwards create_game request to memory_logic service
-    """
     verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -105,9 +95,6 @@ async def create_game(request: Request, create_request: CreateGameRequest):
 
 @app.post("/flip_card")
 async def flip_card(request: Request, flip_request: FlipCardRequest):
-    """
-    Forwards flip_card request to memory_logic service
-    """
     verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -137,9 +124,6 @@ async def flip_card(request: Request, flip_request: FlipCardRequest):
 
 @app.get("/game_status/{game_id}")
 async def get_game_status(request: Request, game_id: int):
-    """
-    Forwards game_status request to memory_logic service
-    """
     verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -165,10 +149,7 @@ async def get_game_status(request: Request, game_id: int):
         )
 
 @app.get("/user_games/{user_id}")
-async def get_user_games(request: Request, user_id: str):  # Changed to UUID string
-    """
-    Forwards user_games request to memory_logic service
-    """
+async def get_user_games(request: Request, user_id: str):
     verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -195,9 +176,6 @@ async def get_user_games(request: Request, user_id: str):  # Changed to UUID str
 
 @app.delete("/delete_game/{game_id}")
 async def delete_game(request: Request, game_id: int):
-    """
-    Forwards delete_game request to memory_logic service
-    """
     verify_jwt_token(request)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:

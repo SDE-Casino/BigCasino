@@ -62,9 +62,8 @@ async def startup_event():
     except Exception as e:
         print(f"Error creating tables: {e}")
 
-# Pydantic models for requests
 class GameCreate(BaseModel):
-    userId: str  # Changed to UUID string
+    userId: str
     size: int
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: bool = True
@@ -73,7 +72,7 @@ class CardCreate(BaseModel):
     localId: int
     gameId: int
     flipped: bool
-    ownedBy: Optional[bool] = None  # None = on table, False = player 1, True = player 2
+    ownedBy: Optional[bool] = None  # None=table, False=player1, True=player2
     image: str
     kindId: int
 
@@ -83,7 +82,7 @@ class MoveCardsRequest(BaseModel):
     gameId: int
 
 class GameUpdate(BaseModel):
-    userId: Optional[str] = None  # Changed to UUID string
+    userId: Optional[str] = None
     size: Optional[int] = None
     winner: Optional[str] = None  # Can be "none", "draw", "player1", "player2", or None
     currentTurn: Optional[bool] = None
@@ -96,7 +95,7 @@ class CardUpdate(BaseModel):
     image: Optional[str] = None
     kindId: Optional[int] = None
 
-# Dependency to get DB session
+
 def get_db():
     db = SessionLocal()
     try:
@@ -119,7 +118,7 @@ def health_check():
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
-# Game CRUD operations
+
 @app.get("/games")
 def get_games():
     db = SessionLocal()
@@ -159,17 +158,12 @@ def create_game(game: GameCreate):
 
 @app.put("/games/{game_id}")
 def update_game(game_id: int, game_update: GameUpdate):
-    """
-    Update game using request body parameters.
-    Winner can be "none", "draw", "player1", "player2", or None.
-    """
     db = SessionLocal()
     try:
         game = db.query(Game).filter(Game.id == game_id).first()
         if game is None:
             return {"error": "Game not found"}, 404
-        
-        # Update game fields from request body
+
         if game_update.userId is not None:
             game.userId = game_update.userId
         if game_update.size is not None:
@@ -199,7 +193,7 @@ def delete_game(game_id: int):
     finally:
         db.close()
 
-# Card CRUD operations
+
 @app.get("/cards")
 def get_cards():
     db = SessionLocal()
@@ -246,8 +240,7 @@ def update_card(card_id: int, card_update: CardUpdate):
         card = db.query(Card).filter(Card.id == card_id).first()
         if card is None:
             return {"error": "Card not found"}, 404
-        
-        # Update card fields from request body
+
         if card_update.localId is not None:
             card.localId = card_update.localId
         if card_update.gameId is not None:
@@ -281,7 +274,7 @@ def delete_card(card_id: int):
     finally:
         db.close()
 
-# Additional endpoint to get cards for a specific game
+
 @app.get("/games/{game_id}/cards")
 def get_cards_for_game(game_id: int):
     db = SessionLocal()
@@ -291,7 +284,7 @@ def get_cards_for_game(game_id: int):
     finally:
         db.close()
 
-# Game state endpoint
+
 @app.get("/game_state/{game_id}")
 def get_game_state(game_id: int):
     db = SessionLocal()
@@ -301,17 +294,17 @@ def get_game_state(game_id: int):
         if game is None:
             return {"error": "Game not found"}, 404
         
-        print(f"DEBUG get_game_state: gameId={game_id}, currentTurn={game.currentTurn}")
+
         
-        # Get all cards for this game, sorted by localId for consistent ordering
+
         cards = db.query(Card).filter(Card.gameId == game_id).order_by(Card.localId).all()
         
-        # Initialize card lists
+
         table_cards = []
         player1_cards = []
         player2_cards = []
         
-        # Categorize cards based on ownedBy field
+
         for card in cards:
             card_data = {
                 "id": card.id,
@@ -322,7 +315,7 @@ def get_game_state(game_id: int):
                 "ownedBy": card.ownedBy
             }
             
-            print(f"DEBUG get_game_state: Card id={card.id}, ownedBy={card.ownedBy}, kindId={card.kindId}")
+
             
             if card.ownedBy is None:
                 table_cards.append(card_data)
@@ -330,8 +323,7 @@ def get_game_state(game_id: int):
                 player1_cards.append(card_data)
             else:  # card.ownedBy is True
                 player2_cards.append(card_data)
-        
-        # Construct response with game object
+
         game_state = {
             "game": {
                 "id": game.id,
@@ -349,7 +341,7 @@ def get_game_state(game_id: int):
     finally:
         db.close()
 
-# Endpoint to flip a card
+
 @app.put("/flip_card/{card_id}")
 def flip_card(card_id: int):
     db = SessionLocal()
@@ -358,10 +350,9 @@ def flip_card(card_id: int):
         if card is None:
             return {"error": "Card not found"}, 404
         
-        print(f"DEBUG flip_card: cardId={card_id}, flipped before={card.flipped}, ownedBy={card.ownedBy}")
-        # Flip card's flipped status
+
         card.flipped = not card.flipped
-        print(f"DEBUG flip_card: flipped after={card.flipped}")
+
             
         db.commit()
         db.refresh(card)
@@ -369,7 +360,7 @@ def flip_card(card_id: int):
     finally:
         db.close()
 
-# Endpoint to change turn
+
 @app.post("/change_turn/{game_id}")
 def change_turn(game_id: int):
     db = SessionLocal()
@@ -378,10 +369,9 @@ def change_turn(game_id: int):
         if game is None:
             return {"error": "Game not found"}, 404
         
-        print(f"DEBUG change_turn: gameId={game_id}, currentTurn before={game.currentTurn}")
-        # Toggle currentTurn
+
         game.currentTurn = not game.currentTurn
-        print(f"DEBUG change_turn: currentTurn after={game.currentTurn}")
+
         
         db.commit()
         db.refresh(game)
@@ -389,66 +379,52 @@ def change_turn(game_id: int):
     finally:
         db.close()
 
-# Endpoint to move cards to player
+
 @app.post("/move_cards_to_player")
 def move_cards_to_player(request: MoveCardsRequest):
     db = SessionLocal()
     try:
-        print(f"DEBUG move_cards_to_player: kindId={request.kindId}, player={request.player}, gameId={request.gameId}")
-        # Find all cards with matching kindId and gameId that are on the table (ownedBy=None)
+
         cards = db.query(Card).filter(
             Card.kindId == request.kindId,
             Card.gameId == request.gameId,
             Card.ownedBy == None
         ).all()
-        print(f"DEBUG: Found {len(cards)} cards to move")
-        for card in cards:
-            print(f"DEBUG: Card id={card.id}, kindId={card.kindId}, gameId={request.gameId}, ownedBy before={card.ownedBy}")
+
         
         if not cards:
             return {"message": "No cards found with specified kindId on the table", "cards": []}
         
-        # Update ownedBy for all matching cards
         for card in cards:
-            print(f"DEBUG: Setting card id={card.id} ownedBy to {request.player}")
             card.ownedBy = request.player
         
         db.commit()
-        
-        # Refresh all cards
+
         for card in cards:
             db.refresh(card)
-            print(f"DEBUG: After commit, card id={card.id} ownedBy={card.ownedBy}")
+
         
         return {"message": f"Moved {len(cards)} card(s) to player", "cards": cards}
     finally:
         db.close()
 
-# Endpoint to get all games for a specific user
 @app.get("/users/{user_id}/games")
-def get_user_games(user_id: str):  # Changed to UUID string
-    """
-    Returns all games for a specific user with their cards categorized by player.
-    Response includes gameId, winner, player1Cards, and player2Cards for each game.
-    """
+def get_user_games(user_id: str):
     db = SessionLocal()
     try:
-        print(f"[MEMORY ADAPTER] Getting games for user_id: {user_id}")  # DEBUG LOG
-        print(f"[MEMORY ADAPTER] user_id length: {len(user_id)}")  # DEBUG LOG
-        
-        # Get all games for user
+
         games = db.query(Game).filter(Game.userId == user_id).all()
-        print(f"[MEMORY ADAPTER] Found {len(games)} games")  # DEBUG LOG
+
         
         result = {
             "games": []
         }
         
         for game in games:
-            # Get all cards for this game
+
             cards = db.query(Card).filter(Card.gameId == game.id).all()
             
-            # Categorize cards by owner
+
             player1_cards = []
             player2_cards = []
             
