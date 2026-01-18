@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, Request
 from typing import Union
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from solitaire import SolitaireGame
 import uuid
 import requests
 import jwt
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+games = {}
 
 @app.post("/create_game")
 def create_game(request: Request):
@@ -76,7 +78,15 @@ def create_game(request: Request):
         if leaderboard_response.status_code != 200:
             raise HTTPException(status_code=leaderboard_response.status_code, detail=leaderboard_response.json()['detail'])
 
-    return response.json()
+    data = response.json()
+
+    game_id = str(uuid.uuid4())
+    games[game_id] = SolitaireGame.from_dict(data['game'])
+    return {
+        "game_id": game_id,
+        "game_state": games[game_id].get_game_state(),
+        "game_status": "playing"
+    }
 
 @app.post("/draw_cards/{game_id}")
 def draw_cards(request: Request, game_id: str):
@@ -96,13 +106,19 @@ def draw_cards(request: Request, game_id: str):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/draw_cards/" + game_id
-    response = requests.post(url)
+    game = games.get(game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json()['detail'])
+    try:
+        game.draw_from_stock()
+    except Exception as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
-    return response.json()
+    return {
+        "game_state": game.get_game_state(),
+        "game_status": "playing"
+    }
 
 @app.post("/reset_stock/{game_id}")
 def reset_stock(request: Request, game_id: str):
@@ -122,13 +138,19 @@ def reset_stock(request: Request, game_id: str):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/reset_stock/" + game_id
-    response = requests.post(url)
+    game = games.get(game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json()['detail'])
+    try:
+        game.reload_stock_from_talon()
+    except Exception as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
-    return response.json()
+    return {
+        "game_state": game.get_game_state(),
+        "game_status": "playing"
+    }
 
 @app.post("/move_card/{game_id}")
 def move_card(request: Request, game_id: str, body: MoveCardRequest):
@@ -160,8 +182,16 @@ def move_card(request: Request, game_id: str, body: MoveCardRequest):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/move_card/" + game_id
-    response = requests.post(url, json=body.dict())
+    game = games.get(game_id)
+    if not game:
+        raise HTTPException(status_code = 404, detail="Game not found")
+
+    url = os.getenv("LOGIC_LAYER_SERVICE_URL") + "/move_card"
+    json = {
+        "game": game.to_dict(),
+        **body.dict()
+    }
+    response = requests.post(url, json=json)
 
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.json()['detail'])
@@ -173,7 +203,12 @@ def move_card(request: Request, game_id: str, body: MoveCardRequest):
         if leaderboard_response.status_code != 200:
             raise HTTPException(status_code=leaderboard_response.status_code, detail=leaderboard_response.json()['detail'])
 
-    return response.json()
+    data = response.json()
+    games[game_id] = SolitaireGame.from_dict(data['game'])
+    return {
+        "game_state": games[game_id].get_game_state(),
+        "game_status": data['game_status']
+    }
 
 @app.get("/leaderboard")
 def get_leaderboard(request: Request):

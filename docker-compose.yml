@@ -218,4 +218,3 @@ volumes:
   authentication_data:
   leaderboard_db_data:
   memory_db_data:
-  mongodb_data:

@@ -7,18 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 class MoveCardInsideTableauRequest(BaseModel):
+    game: dict
     column_from: int
     column_to: int
     number_of_cards: int = 1
 
 class MoveCardToFoundationRequest(BaseModel):
+    game: dict
     column_from: int
     suit: str
 
 class MoveCardToTableauRequest(BaseModel):
+    game: dict
     column_to: int
 
 class MoveCardToFoundationFromTalon(BaseModel):
+    game: dict
     suit: str
 
 MoveCardRequest = Union [
@@ -38,62 +42,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-games = {}
-
 @app.post("/create_game")
 def create_game():
     """
     Create a new instance for a solitaire game
     """
-    game_id = str(uuid.uuid4())
     game = SolitaireGame()
-    games[game_id] = game
     return {
-        "game_id": game_id,
-        "game_state": game.get_game_state()
-    }
-
-@app.post("/draw_cards/{game_id}")
-def draw_cards(game_id: str):
-    """
-    Draw cards from the stock pile to talon
-    """
-    game = games.get(game_id)
-    if not game:
-        raise HTTPException(status_code=404, detail="Game not found")
-
-    try:
-        game.draw_from_stock()
-    except Exception as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-    return {
-        "game_state": game.get_game_state(),
+        "game": game.to_dict(),
         "game_status": "playing"
     }
 
-@app.post("/reset_stock/{game_id}")
-def reset_stock(game_id: str):
-    """
-    Reset the stock pile from the talon
-    """
-    game = games.get(game_id)
-    if not game:
-        raise HTTPException(status_code=404, detail="Game not found")
 
-    try:
-        game.reload_stock_from_talon()
-    except Exception as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-    return {
-        "game_state": game.get_game_state(),
-        "game_status": "playing"
-    }
-
-@app.post("/move_card/{game_id}")
-def move_card(game_id: str, move_request: MoveCardRequest):
+@app.post("/move_card")
+def move_card(move_request: MoveCardRequest):
     """
     Move a card from one pile to another
 
@@ -107,10 +69,8 @@ def move_card(game_id: str, move_request: MoveCardRequest):
 
     Move to foundation from talon: {suit: str}
     """
-    game = games.get(game_id)
-    if not game:
-        raise HTTPException(status_code = 404, detail="Game not found")
-
+    game = SolitaireGame.from_dict(move_request.game)
+    print(game)
     if isinstance(move_request, MoveCardInsideTableauRequest):
         try:
             game.move_cards_inside_tableau(
@@ -129,7 +89,7 @@ def move_card(game_id: str, move_request: MoveCardRequest):
 
             if game.check_win():
                 return {
-                    "game_state": game.get_game_state(),
+                    "game": game.to_dict(),
                     "game_status": "won"
                 }
         except Exception as e:
@@ -140,7 +100,7 @@ def move_card(game_id: str, move_request: MoveCardRequest):
 
             if game.check_win():
                 return {
-                    "game_state": game.get_game_state(),
+                    "game": game.to_dict(),
                     "game_status": "won"
                 }
         except Exception as e:
@@ -156,6 +116,6 @@ def move_card(game_id: str, move_request: MoveCardRequest):
         raise HTTPException(status_code=400, detail="Invalid request parameters")
 
     return {
-        "game_state": game.get_game_state(),
+        "game": game.to_dict(),
         "game_status": "playing"
     }
