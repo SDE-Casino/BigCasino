@@ -17,30 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # MongoDB database for authentication service
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    restart: always
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
-      MONGO_INITDB_DATABASE: myapp
-    volumes:
-      - mongodb_data:/data/db
-      - ./authentication/.mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    networks:
-      - default
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: "none"
-
   # ------------------- MEMORY SERVICES -------------------
   image_adapter:
     build:
@@ -189,11 +165,8 @@ services:
       - ./authentication/google/.env
     ports:
       - "8004:8000"
-    environment:
-      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/myapp?authSource=admin
-      - DB_NAME=myapp
     depends_on:
-      mongodb:
+      auth_db:
         condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
