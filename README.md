@@ -33,12 +33,12 @@ BigCasino follows a **layered microservices architecture** with clear separation
 ┌─────────┐ ┌─────────┐            ┌─────────────┐ ┌─────────────┐   ┌─────────────┐ ┌─────────────┐
 │ Memory  │ │  Image  │            │    Deck     │ │ Leaderboard │   │    Auth     │ │   Google    │
 │ Adapter │ │ Adapter │            │   Adapter   │ │   Adapter   │   │   Adapter   │ │    OAuth    │
-└────┬────┘ └─────────┘            └─────────────┘ └──────┬──────┘   └─────────────┘ └──────┬──────┘
-     │                                                    │                                   │
-     ▼                                                    ▼                                   ▼
-┌─────────────┐                                     ┌─────────────┐                   ┌─────────────┐
-│ PostgreSQL  │                                     │ PostgreSQL  │                   │   MongoDB   │
-└─────────────┘                                     └─────────────┘                   └─────────────┘
+└────┬────┘ └─────────┘            └─────────────┘ └──────┬──────┘   └──────┬──────┘ └──────┬──────┘
+     │                                                    │                 │               │
+     ▼                                                    ▼                 ▼               ▼
+┌─────────────┐                                     ┌─────────────┐        ┌─────────────────┐
+│ PostgreSQL  │                                     │ PostgreSQL  │        │   PostgresSQL   │
+└─────────────┘                                     └─────────────┘        └─────────────────┘
 ```
 
 ### Layer Description
@@ -49,7 +49,7 @@ BigCasino follows a **layered microservices architecture** with clear separation
 | **Process Centric** | Orchestrates business workflows and coordinates between services |
 | **Logic** | Contains core game/authentication business logic |
 | **Adapter** | Handles data persistence and external API integrations |
-| **Database** | PostgreSQL for Memory/Leaderboard, MongoDB for Authentication |
+| **Database** | PostgreSQL for Memory/Leaderboard, PostgreSQL for Authentication |
 
 ---
 
@@ -150,7 +150,7 @@ BigCasino integrates with the following external APIs:
 
 - **Frontend**: React 19, TanStack Router, TanStack Query, TailwindCSS
 - **Backend**: Python (FastAPI/Uvicorn)
-- **Databases**: PostgreSQL, MongoDB
+- **Databases**: PostgreSQL
 - **Containerization**: Docker & Docker Compose
 
 ---

@@ -73,15 +73,15 @@ async def create_game(request: Request, create_request: CreateGameRequest):
                 f"{MEMORY_LOGIC_URL}/create_game",
                 json=create_request.model_dump()
             )
-            
+
             if response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"Failed to create game: {response.text}"
                 )
-            
+
             return response.json()
-                
+
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
@@ -102,15 +102,15 @@ async def flip_card(request: Request, flip_request: FlipCardRequest):
                 f"{MEMORY_LOGIC_URL}/flip_card",
                 json=flip_request.model_dump()
             )
-            
+
             if response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"Failed to flip card: {response.text}"
                 )
-            
+
             return response.json()
-                
+
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
@@ -128,15 +128,15 @@ async def get_game_status(request: Request, game_id: int):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(f"{MEMORY_LOGIC_URL}/game_status/{game_id}")
-            
+
             if response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"Failed to get game status: {response.text}"
                 )
-            
+
             return response.json()
-                
+
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
@@ -154,15 +154,15 @@ async def get_user_games(request: Request, user_id: str):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(f"{MEMORY_LOGIC_URL}/user_games/{user_id}")
-            
+
             if response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"Failed to get user games: {response.text}"
                 )
-            
+
             return response.json()
-                
+
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
@@ -180,15 +180,15 @@ async def delete_game(request: Request, game_id: int):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.delete(f"{MEMORY_LOGIC_URL}/delete_game/{game_id}")
-            
+
             if response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"Failed to delete game: {response.text}"
                 )
-            
+
             return response.json()
-                
+
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
