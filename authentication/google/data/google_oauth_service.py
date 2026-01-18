@@ -28,7 +28,9 @@ class GoogleOAuthService:
         self.flow.redirect_uri = self.redirect_uri
 
     def get_auth_url(self) -> str:
-        """Genera URL per l'autenticazione Google"""
+        """
+        Generates the Google authorization URL
+        """
         authorization_url, state = self.flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true'
@@ -36,7 +38,9 @@ class GoogleOAuthService:
         return authorization_url, state
 
     def verify_token(self, token: str) -> dict:
-        """Verifica il token ID ricevuto da Google"""
+        """
+        Verifies received Google token's ID
+        """
         try:
             idinfo = id_token.verify_oauth2_token(
                 token,
@@ -48,12 +52,16 @@ class GoogleOAuthService:
             raise Exception(f"Token non valido: {str(e)}")
 
     def get_credentials_from_code(self, code: str):
-        """Ottieni credenziali dal codice di autorizzazione"""
+        """
+        Get credentials from authorization code
+        """
         self.flow.fetch_token(code=code)
         return self.flow.credentials
 
     def get_user_info(self, credentials) -> dict:
-        """Ottieni informazioni utente dalle credenziali"""
+        """
+        Get user info from credentials
+        """
         return id_token.verify_oauth2_token(
             credentials.id_token,
             requests.Request(),

@@ -7,11 +7,15 @@ class AuthenticationService:
         self.google_service = google_oauth_service
 
     def initiate_google_auth(self) -> tuple:
-        """Inizia processo di autenticazione Google"""
+        """
+        Starts Google autjentication process
+        """
         return self.google_service.get_auth_url()
 
     def handle_google_callback(self, code: str) -> dict:
-        """Gestisce il callback da Google"""
+        """
+        Handles Google callback
+        """
         try:
             result = self.auth_logic.login_with_google_code(code)
             return {
@@ -25,7 +29,9 @@ class AuthenticationService:
             }
 
     def authenticate_with_google_token(self, google_token: str) -> dict:
-        """Autenticazione diretta con token Google"""
+        """
+        Direct authentication through Google token
+        """
         try:
             result = self.auth_logic.login_with_google(google_token)
             return {
@@ -39,7 +45,9 @@ class AuthenticationService:
             }
 
     def verify_session_token(self, token: str) -> dict:
-        """Verifica token di sessione"""
+        """
+        Verify session token
+        """
         try:
             payload = self.auth_logic.verify_jwt_token(token)
             return {

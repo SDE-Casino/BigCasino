@@ -12,7 +12,9 @@ class GoogleTokenRequest(BaseModel):
 
 @app.get('/auth/google')
 async def google_auth():
-    """Inizia autenticazione Google"""
+    """
+    Google authentication entrypoint
+    """
     auth_url, _ = authentication_service.initiate_google_auth()
     return RedirectResponse(url=auth_url)
 
@@ -44,7 +46,9 @@ async def google_callback(code: str, response: Response):
 
 @app.post('/auth/google/token')
 async def google_token_auth(request: GoogleTokenRequest):
-    """Autenticazione diretta con token Google"""
+    """
+    Direct authentication through Google token
+    """
     result = authentication_service.authenticate_with_google_token(request.googleToken)
 
     if result['success']:
@@ -57,7 +61,9 @@ async def verify_token(
     authToken: Optional[str] = Cookie(None),
     authorization: Optional[str] = Header(None)
 ):
-    """Verifica token di sessione"""
+    """
+    Verify session token
+    """
     token = authToken or (authorization.replace('Bearer ', '') if authorization else None)
 
     if not token:

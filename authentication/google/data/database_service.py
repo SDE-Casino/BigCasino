@@ -1,35 +1,51 @@
-from pymongo import MongoClient
+from data.models.users import User, Base
+from pydantic import BaseModel
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 from datetime import datetime
 import os
 
 class DatabaseService:
     def __init__(self):
-        self.client = MongoClient(os.getenv('MONGODB_URI', 'mongodb://localhost:27017/'))
-        self.db = self.client[os.getenv('DB_NAME', 'myapp')]
-        self.users = self.db['users']
+        self.engine = create_engine(os.getenv('DATABASE_URL'))
+        Base.metadata.create_all(self.engine)
 
     def find_user_by_google_id(self, google_id: str):
-        """Trova utente tramite Google ID"""
-        return self.users.find_one({'google_id': google_id})
+        """
+        Find a user based on its Google ID
+        """
+        with Session(self.engine) as session:
+            user = session.execute(select(User).filter(User.google_id == google_id)).scalar_one_or_none()
+            if not user:
+                return None
+
+            return user
 
     def find_user_by_email(self, email: str):
-        """Trova utente tramite email"""
-        return self.users.find_one({'email': email})
+        """
+        Find a user based on its email
+        """
+        with Session(self.engine) as session:
+            user = session.execute(select(User).filter(User.google_email == email)).scalar_one_or_none()
+            if not user:
+                return None
+
+            return user
 
     def create_user(self, user_data: dict):
-        """Crea nuovo utente"""
-        user_data['created_at'] = datetime.now()
-        result = self.users.insert_one(user_data)
-        user_data['_id'] = result.inserted_id
-        return user_data
-
-    def update_user(self, user_id, update_data: dict):
-        """Aggiorna utente esistente"""
-        update_data['updated_at'] = datetime.now()
-        self.users.update_one(
-            {'_id': user_id},
-            {'$set': update_data}
-        )
-        return self.users.find_one({'_id': user_id})
+        """
+        Create a new google user
+        """
+        with Session(self.engine) as session:
+            new_user = User(
+                username=user_data.get('name'),
+                google_id=user_data.get('google_id'),
+                google_email=user_data.get('email')
+            )
+            session.add(new_user)
+            session.commit()
+            user_data['created_at'] = datetime.now()
+            user_data['_id'] = new_user.id
+            return user_data
 
 database_service = DatabaseService()
