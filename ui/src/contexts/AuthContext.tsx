@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { authService } from '../services/auth'
 import type { UserCredentials, User } from '../types/auth'
@@ -29,6 +29,7 @@ function getTokenExpiration(token: string): number | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const isRefreshingRef = useRef(false)
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -47,7 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Set up automatic token refresh
   useEffect(() => {
-    if (!user || isLoading) return
+    // Skip if already refreshing to prevent infinite loop
+    if (!user || isLoading || isRefreshingRef.current) return
 
     const token = authService.getAccessToken()
     if (!token) return
@@ -102,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refresh = useCallback(async () => {
+    // Prevent concurrent refresh calls and infinite loops
+    if (isRefreshingRef.current) return
+    isRefreshingRef.current = true
+
     try {
       await authService.refresh()
       const storedUser = authService.getUser()
@@ -112,6 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Token refresh error:', error)
       setUser(null)
       throw error
+    } finally {
+      isRefreshingRef.current = false
     }
   }, [])
 
