@@ -57,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const expiration = getTokenExpiration(token)
     if (!expiration) return
 
-    // Refresh token 5 minutes before it expires
-    const refreshTime = expiration - Date.now() - 5 * 60 * 1000
+    // Refresh token 30 seconds before it expires
+    const refreshTime = expiration - Date.now() - 30 * 1000
 
     if (refreshTime <= 0) {
       // Token is already expired or will expire soon, refresh immediately
@@ -116,8 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Token refresh error:', error)
+      // Clear all auth data from localStorage
+      authService.clearAuthData()
       setUser(null)
-      throw error
+      // Redirect to auth page with session expired message
+      window.location.href = '/auth?session_expired=true'
     } finally {
       isRefreshingRef.current = false
     }
