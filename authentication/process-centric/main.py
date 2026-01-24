@@ -124,8 +124,8 @@ def register(credentials: UserCredentials, response: Response):
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=False,  # Set to True in production with HTTPS
+        samesite="none",  # Required for cross-origin requests (UI on different port)
         path="/refresh"
     )
 
@@ -178,8 +178,8 @@ def login(credentials: UserCredentials, response: Response):
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=False,  # Set to True in production with HTTPS
+        samesite="none",  # Required for cross-origin requests (UI on different port)
         path="/refresh"
     )
 
@@ -285,8 +285,8 @@ def google_refresh_token(request: Request, response: Response):
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=False,  # Set to True in production with HTTPS
+        samesite="none",  # Required for cross-origin requests (UI on different port)
         path="/refresh"
     )
 
