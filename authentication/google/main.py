@@ -31,16 +31,7 @@ async def google_callback(code: str, response: Response):
 
     if result['success']:
         url = os.getenv("IDP_URL") + f"/google/callback/refresh_token?id={result['data']['user']['id']}&username={result['data']['user']['email']}"
-        response = RedirectResponse(url=url)
-        response.set_cookie(
-            key='authToken',
-            value=result['data']['token'],
-            httponly=True,
-            secure=True,
-            samesite='lax',
-            max_age=7*24*60*60
-        )
-        return response
+        return RedirectResponse(url=url)
     else:
         raise HTTPException(status_code=401, detail=result['error'])
 
@@ -77,9 +68,8 @@ async def verify_token(
         raise HTTPException(status_code=401, detail=result['error'])
 
 @app.post('/auth/logout')
-async def logout(response: Response):
+async def logout():
     """Logout"""
-    response.delete_cookie('authToken')
     return {'message': 'Logout effettuato'}
 
 if __name__ == '__main__':

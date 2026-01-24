@@ -313,9 +313,6 @@ def verify_google_token(request: Request):
     auth = request.headers.get("authorization")
     if auth:
         headers["authorization"] = auth
-    auth_cookie = request.cookies.get("authToken")
-    if auth_cookie:
-        headers["cookie"] = f"authToken={auth_cookie}"
 
     google_response = requests.get(url, headers=headers)
 
@@ -364,5 +361,12 @@ def google_logout(response: Response):
     """
     Logout from google service
     """
+    # Delete refresh token cookie
+    response.delete_cookie(
+        key="refresh_token",
+        path="/"
+    )
     url = f"{os.getenv('GOOGLE_REDIRECT_URL')}/auth/logout"
-    return RedirectResponse(url=url)
+    redirect = RedirectResponse(url=url)
+    redirect.delete_cookie(key="refresh_token", path="/")
+    return redirect
