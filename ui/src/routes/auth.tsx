@@ -29,6 +29,17 @@ function Auth() {
 
 
   useEffect(() => {
+    // First check for tokens in URL hash (new approach - avoids cross-origin cookie issues)
+    if (window.location.hash) {
+      const result = authService.handleGoogleCallbackFromHash()
+      if (result.success) {
+        // Use full page redirect to ensure AuthContext reloads from localStorage
+        window.location.href = '/'
+        return
+      }
+    }
+
+    // Fallback: check for google_auth query param (old approach)
     const urlParams = new URLSearchParams(window.location.search)
     const googleAuth = urlParams.get('google_auth')
 

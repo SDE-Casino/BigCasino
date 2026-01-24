@@ -125,8 +125,7 @@ def register(credentials: UserCredentials, response: Response):
         value=refresh_token,
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
-        samesite="none",  # Required for cross-origin requests (UI on different port)
-        path="/refresh"
+        path="/"
     )
 
     return {
@@ -179,8 +178,7 @@ def login(credentials: UserCredentials, response: Response):
         value=refresh_token,
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
-        samesite="none",  # Required for cross-origin requests (UI on different port)
-        path="/refresh"
+        path="/"
     )
 
     return {
@@ -196,6 +194,13 @@ def refresh(request: Request):
     Provide a new access token for the user (supports both local and Google providers)
     """
     token = request.cookies.get("refresh_token")
+    
+    # Fallback: check Authorization header for refresh token
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Refresh "):
+            token = auth_header[8:]  # Remove "Refresh " prefix
+    
     if not token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
 
@@ -233,7 +238,7 @@ def logout(response: Response):
     """
     response.delete_cookie(
         key="refresh_token",
-        path="/refresh"
+        path="/"
     )
     return {"detail": "Logged out successfully"}
 
@@ -286,13 +291,13 @@ def google_refresh_token(request: Request, response: Response):
         value=refresh_token,
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
-        samesite="none",  # Required for cross-origin requests (UI on different port)
-        path="/refresh"
+        path="/"
     )
 
-    # Redirect to UI with Google auth indicator
+    # Redirect to UI with tokens in URL fragment (hash) for client-side access
+    # Using fragment (#) instead of query params for better security (not sent to server in subsequent requests)
     ui_url = os.getenv("UI_REDIRECT_URL", "http://localhost:3000/auth")
-    redirect_url = f"{ui_url}?google_auth=true"
+    redirect_url = f"{ui_url}#access_token={access_token}&refresh_token={refresh_token}"
     return RedirectResponse(url=redirect_url)
 
 

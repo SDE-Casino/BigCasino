@@ -9,6 +9,7 @@ import type {
 const API_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8009'
 
 const ACCESS_TOKEN_KEY = 'access_token'
+const REFRESH_TOKEN_KEY = 'refresh_token'
 const USER_KEY = 'user'
 
 // Helper function to parse JWT and get user ID from token
@@ -49,6 +50,14 @@ class AuthService {
         return localStorage.getItem(ACCESS_TOKEN_KEY)
     }
 
+    setRefreshToken(token: string): void {
+        localStorage.setItem(REFRESH_TOKEN_KEY, token)
+    }
+
+    getRefreshToken(): string | null {
+        return localStorage.getItem(REFRESH_TOKEN_KEY)
+    }
+
     setUser(user: { id: string; username: string }): void {
         localStorage.setItem(USER_KEY, JSON.stringify(user))
     }
@@ -67,6 +76,7 @@ class AuthService {
 
     clearAuthData(): void {
         localStorage.removeItem(ACCESS_TOKEN_KEY)
+        localStorage.removeItem(REFRESH_TOKEN_KEY)
         localStorage.removeItem(USER_KEY)
     }
 
@@ -109,9 +119,19 @@ class AuthService {
     }
 
     async refresh(): Promise<RefreshResponse> {
+        const refreshToken = this.getRefreshToken()
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        }
+
+        // Send refresh token via header since cross-origin cookies are problematic
+        if (refreshToken) {
+            headers['Authorization'] = `Refresh ${refreshToken}`
+        }
+
         const response = await fetch(`${API_URL}/refresh`, {
             method: 'POST',
-            headers: this.getHeaders(),
+            headers,
             credentials: 'include',
         })
 
@@ -167,6 +187,43 @@ class AuthService {
         }
 
         return data
+    }
+
+    // Handle tokens passed via URL hash after Google OAuth redirect
+    handleGoogleCallbackFromHash(): { success: boolean; username?: string } {
+        const hash = window.location.hash.substring(1) // Remove the # character
+        if (!hash) {
+            return { success: false }
+        }
+
+        const params = new URLSearchParams(hash)
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+
+        if (accessToken && refreshToken) {
+            this.setAccessToken(accessToken)
+            this.setRefreshToken(refreshToken)
+
+            // Extract user info from token
+            const userId = getUserIdFromToken(accessToken)
+            if (userId) {
+                // Try to get email from the token payload
+                try {
+                    const payload = JSON.parse(atob(accessToken.split('.')[1]))
+                    const username = payload.email || payload.username || 'Google User'
+                    this.setUser({ id: userId, username })
+
+                    // Clear the hash from URL for cleaner look
+                    window.history.replaceState(null, '', window.location.pathname)
+
+                    return { success: true, username }
+                } catch {
+                    return { success: false }
+                }
+            }
+        }
+
+        return { success: false }
     }
 
     isAuthenticated(): boolean {
