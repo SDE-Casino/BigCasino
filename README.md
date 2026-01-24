@@ -33,12 +33,12 @@ BigCasino follows a **layered microservices architecture** with clear separation
 ┌─────────┐ ┌─────────┐            ┌─────────────┐ ┌─────────────┐   ┌─────────────┐ ┌─────────────┐
 │ Memory  │ │  Image  │            │    Deck     │ │ Leaderboard │   │    Auth     │ │   Google    │
 │ Adapter │ │ Adapter │            │   Adapter   │ │   Adapter   │   │   Adapter   │ │    OAuth    │
-└────┬────┘ └─────────┘            └─────────────┘ └──────┬──────┘   └──────┬──────┘ └──────┬──────┘
-     │                                                    │                 │               │
-     ▼                                                    ▼                 ▼               ▼
-┌─────────────┐                                     ┌─────────────┐        ┌─────────────────┐
-│ PostgreSQL  │                                     │ PostgreSQL  │        │   PostgresSQL   │
-└─────────────┘                                     └─────────────┘        └─────────────────┘
+└────┬────┘ └────────┬┘            └──────┬──────┘ └──────┬──────┘   └──────┬──────┘ └──────┬──────┘
+     │               |                    |               │                 │               │
+     ▼               ▼                    ▼               ▼                 ▼               ▼
+┌─────────────┐   ┌───────────┐    ┌─────────────┐  ┌─────────────┐        ┌─────────────────┐
+│ PostgreSQL  │   |  CATaaS   |    │Deck of Cards│  │ PostgreSQL  │        │   PostgresSQL   │
+└─────────────┘   └───────────┘    └─────────────┘  └─────────────┘        └─────────────────┘
 ```
 
 ### Layer Description
@@ -126,11 +126,11 @@ BigCasino/
 | Deck Adapter | 8006 |
 | Auth (Process Centric) | 8009 |
 | Auth Logic | 8008 |
-| Auth Adapter | 8007 |
+| Auth Adapter | 8011 |
 | Google OAuth | 8004 |
 | PostgreSQL (Memory) | 5432 |
 | PostgreSQL (Leaderboard) | 5431 |
-| MongoDB | 27017 |
+| PostgreSQL (Authentication) | 5433 |
 
 ---
 
