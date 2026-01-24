@@ -8,6 +8,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 COPY ./routes ./routes
 
+# Environment variables
+ENV ADAPTER_URL="http://auth_adapter:8000"
+
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

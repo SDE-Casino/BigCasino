@@ -52,8 +52,6 @@ services:
       context: ./memory/memory
       dockerfile: Dockerfile
     container_name: memory
-    env_file:
-      - ./memory/memory/.env
     ports:
       - "8003:8000"
     restart: unless-stopped
@@ -83,8 +81,6 @@ services:
     build:
       context: ./solitaire/leaderboard
       dockerfile: Dockerfile
-    env_file:
-      - ./solitaire/leaderboard/.env
     ports:
       - "8012:8000"
     restart: unless-stopped
@@ -115,8 +111,6 @@ services:
       context: ./solitaire/process_centric
       dockerfile: Dockerfile
     container_name: solitaire-process-centric
-    env_file:
-      - ./solitaire/process_centric/.env
     ports:
       - "8010:8000"
     depends_on:
@@ -161,8 +155,6 @@ services:
       context: ./authentication/google
       dockerfile: Dockerfile
     container_name: google-auth
-    env_file:
-      - ./authentication/google/.env
     ports:
       - "8004:8000"
     depends_on:
@@ -176,8 +168,6 @@ services:
       context: ./authentication/adapter
       dockerfile: Dockerfile
     container_name: auth-adapter
-    env_file:
-      - ./authentication/adapter/.env
     ports:
       - "8011:8000"
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -191,8 +181,6 @@ services:
       context: ./authentication/logic
       dockerfile: Dockerfile
     container_name: auth-logic
-    env_file:
-      - ./authentication/logic/.env
     ports:
       - "8008:8000"
     depends_on:
@@ -205,8 +193,6 @@ services:
       context: ./authentication/process-centric
       dockerfile: Dockerfile
     container_name: authenticator
-    env_file:
-      - ./authentication/process-centric/.env
     ports:
       - "8009:8000"
     depends_on:

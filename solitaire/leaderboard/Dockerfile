@@ -7,6 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Environment variables
+ENV DATABASE_URL=postgresql+psycopg2://postgres:postgres@solitaire_leaderboard_db:5432/leaderboard_db
+
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
